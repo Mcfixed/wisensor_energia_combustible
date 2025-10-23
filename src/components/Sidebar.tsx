@@ -1,17 +1,13 @@
-import { House, Settings, ShoppingBag, Database, AlertCircle, Users, FileText, ChartSpline } from 'lucide-react';
+import { House, Settings,  AlertCircle, Fuel, Zap, BatteryCharging } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 function Sidebar() {
   const location = useLocation();
   
   const menuItems = [
-    { path: "/dashboard", icon: House, label: "Centro" },
-    { path: "/dashboard2", icon: House, label: "Centros" },
-    { path: "/inventario", icon: ShoppingBag, label: "Inventario" },
-    { path: "/analisismarino", icon: ChartSpline, label: "Análisis" },
-  
-    
-    { path: "/reportes", icon: AlertCircle, label: "Sistema" },
+    { path: "/energia", icon: Zap, label: "Energia" },
+    { path: "/combustible", icon: Fuel, label: "Combustible" },
+    { path: "/monitoreo", icon:BatteryCharging, label: "Sistema" },
     { path: "/configuracion", icon: Settings, label: "Configuración" }
   ];
 

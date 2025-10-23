@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
-import { usePermission } from "../../hooks/rolesypermisos/usePermission";
+import { useAuth } from "../../contexts/AuthContext";
 
 export const Configuracion = () => {
-  //permisos
-  const verEmpresa = usePermission("ver empresa");
-  //const editarEmpresa = usePermission("editar empresas");
-  const verCentros = usePermission("ver centro");
-  const verUsuarios = usePermission("ver usuario");
-  const verrolesyPermisos = usePermission("ver roles");
-  const verInventario = usePermission("ver inventario");
+  const { roles } = useAuth();
+  // Función para comprobar si el usuario tiene un rol específico en una empresa
+  const hasRole = (companyId: number, roleName: string) => {
+    return roles.some(
+      (r) => r.company_id === companyId && r.role === roleName
+    );
+  };
   return (
     <div className="w-full h-screen p-2 bg-gray-dark">
       <div className="h-full rounded-lg bg-gray-darkL border border-gray-700 relative overflow-hidden">
@@ -25,7 +25,7 @@ export const Configuracion = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-6">
           {/* Tarjeta Empresas */}
-          {verEmpresa && (
+          
             <Link to="/configuracion/empresas" className="group">
               <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
                 <div className="flex flex-col h-full">
@@ -45,10 +45,10 @@ export const Configuracion = () => {
                 </div>
               </div>
             </Link>
-          )}
+          
 
           {/* Tarjeta Centros */}
-          {verCentros&&(
+          
           <Link to="/configuracion/centros" className="group">
             <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
@@ -68,10 +68,10 @@ export const Configuracion = () => {
               </div>
             </div>
           </Link>
-          )}
+          
 
           {/* Tarjeta Usuarios */}
-          {verUsuarios&&(
+          
 
           
           <Link to="/configuracion/usuarios" className="group">
@@ -93,10 +93,10 @@ export const Configuracion = () => {
               </div>
             </div>
           </Link>
-          )}
+          
 
           {/* Tarjeta Roles y permisos */}
-          {verrolesyPermisos&&(
+          
           <Link to="/configuracion/roles-permisos" className="group">
             <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
@@ -116,10 +116,10 @@ export const Configuracion = () => {
               </div>
             </div>
           </Link>
-          )}
+          
 
           {/* Tarjeta Inventario */}
-          {verInventario&&(
+          {hasRole(1, 'admin') && (
           <Link to="/configuracion/inventario" className="group">
             <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
@@ -140,6 +140,7 @@ export const Configuracion = () => {
             </div>
           </Link>
           )}
+          
         </div>
       </div>
     </div>
