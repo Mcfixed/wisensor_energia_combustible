@@ -45,7 +45,7 @@ function Header() {
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-semibold text-white flex items-center">
               {/* <span className="bg-red-dark/20 px-2 py-0.5 rounded-md mr-2 text-sm">WI</span> */}
-              <span className='text-red-500'>TRA</span> ZABILIDAD
+              <span className='text-red-500'></span> ENERGIA
             </h1>
           </div>
         </nav>

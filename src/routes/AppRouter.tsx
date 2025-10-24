@@ -24,7 +24,7 @@ const AppRouter = () => {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Dashboard />} />
+        <Route index element={<Energia />} />
         <Route path="/combustible" element={<Combustible />} />
         <Route path="/energia" element={<Energia />} />
 

@@ -16,7 +16,7 @@ import { Reportes } from "./views/Reportes/Reportes";
 import { Estadisticas } from "./views/Estadisticas/Estadisticas";
 import { Dashboard2 } from "./views/Dashboard/Dashboard2";
 import { Combustible } from "./views/Combustible/Combustible";
-import { Energia } from "./views/Energia/Energia";
+import { Energia } from "./views/Energia/EnergiaMain";
 export default function AppRoutes() {
   return (
     <Routes>
