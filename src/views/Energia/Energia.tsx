@@ -1,44 +1,34 @@
+// Energia.tsx
 import { useState } from "react";
-import {
-  Chart as ChartJS,
-  CategoryScale, LinearScale, PointElement, LineElement,
-  BarElement, ArcElement, Title, Tooltip, Legend, Filler
-} from 'chart.js';
-
-// Importar nuestros componentes y hook
 import { useEnergyData } from "./hooks/useEnergyData";
 import { EnergyHeader } from "./components/EnergyHeader";
 import { SummaryView } from "./components/SummaryView";
 import { DetailedView } from "./components/DetailedView";
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
+  BarElement, ArcElement, Title, Tooltip, Legend, Filler
+} from 'chart.js';
 
-// Registrar componentes de Chart.js
 ChartJS.register(
   CategoryScale, LinearScale, PointElement, LineElement,
   BarElement, ArcElement, Title, Tooltip, Legend, Filler
 );
 
 export const Energia = () => {
-  // 1. Usar el hook para obtener los datos
-  
-  const { devices, loading, error, timeRange, setTimeRange } = useEnergyData();
-  console.log("Dispositivos de energía cargados:", devices);
-  // 2. Estados locales para la UI
+  const [timeRange, setTimeRange] = useState("1d");
   const [showSensitive, setShowSensitive] = useState(false);
   const [detailedViewIndex, setDetailedViewIndex] = useState<number | null>(null);
 
-  // 3. Calcular ancho de columnas
-  const columnWidth = devices.length > 0 ? `${100 / devices.length}%` : '100%';
+  // El hook se alimenta del estado 'timeRange'
+  const { devices, loading, error } = useEnergyData(timeRange);
 
-  // 4. Manejar estados de carga y error
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen text-white">Cargando dispositivos...</div>;
-  }
+  const handleTimeRangeChange = (newRange: string) => {
+    setTimeRange(newRange);
+  };
 
-  if (error) {
-    return <div className="flex items-center justify-center h-screen text-red-400">{error}</div>;
-  }
+  if (loading) return <div className="flex items-center justify-center h-screen text-white">Cargando dispositivos...</div>;
+  if (error) return <div className="flex items-center justify-center h-screen text-red-400">{error}</div>;
 
-  // 5. Renderizar vista detallada si está seleccionada
   if (detailedViewIndex !== null) {
     return (
       <DetailedView 
@@ -49,19 +39,21 @@ export const Energia = () => {
     );
   }
 
-  // 6. Renderizar vista resumen (principal)
+  const columnWidth = devices.length > 0 ? `${100 / devices.length}%` : '100%';
+
   return (
     <main className="flex-1 h-screen overflow-hidden p-2 bg-gray-dark">
       <div className="flex flex-col h-full gap-2">
-      
-        {/* Header (ahora es un componente) */}
+        
+        {/* 1. Pasamos las props al Header */}
         <EnergyHeader 
           devices={devices}
           showSensitive={showSensitive}
           onToggleSensitive={() => setShowSensitive(!showSensitive)}
+          timeRange={timeRange}
+          onTimeRangeChange={handleTimeRangeChange}
         />
 
-        {/* Contenedor principal de columnas */}
         <div className="flex-1 flex gap-2 overflow-x-auto">
           {devices.map((device, index) => (
             <div 
@@ -70,11 +62,11 @@ export const Energia = () => {
               className="h-full"
             >
               <SummaryView 
-                device={device} 
+                device={device}
                 index={index}
                 onViewDetails={() => setDetailedViewIndex(index)}
                 currentTimeRange={timeRange}
-                onTimeRangeChange={setTimeRange}
+                // 2. Quitamos 'onTimeRangeChange' de aquí
               />
             </div>
           ))}
@@ -83,5 +75,3 @@ export const Energia = () => {
     </main>
   );
 };
-
-export default Energia;

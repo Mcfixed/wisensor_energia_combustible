@@ -1,90 +1,41 @@
 // src/views/login/Login.tsx
-
-// --- IMPORTACIONES ---
-// Tus importaciones originales
 import { ArrowBigRightDash, LogIn, Mail, Lock } from "lucide-react";
-import axios from "axios";
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext"; // <-- Solo importamos el hook
 import Version from "../../components/Version";
-// Importación añadida para redirigir
 import { useNavigate } from "react-router-dom"; 
 
 export const Login = () => {
-  // --- ESTADO ---
-  const { login } = useAuth();
-  const navigate = useNavigate(); // Hook para redirigir
-
-  // Cambiado a string simple para manejar mejor los errores
+  // --- ESTADO (El hook de Auth y estado local) ---
+  const { login } = useAuth(); // <-- Obtenemos la función 'login' del contexto
+  const navigate = useNavigate(); 
   const [error, setError] = useState<string | null>(null); 
-  // Estado para deshabilitar el botón mientras se loguea
   const [isLoading, setIsLoading] = useState(false); 
 
-  // --- LÓGICA DE LOGIN (MODIFICADA) ---
+  // --- LÓGICA DE LOGIN (LIMPIA) ---
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    const apiUrl = import.meta.env.VITE_API_BASE_URL;
     const email = (e.target as HTMLFormElement).email.value;
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      // --- PASO 1: Obtener el Token (Formato x-www-form-urlencoded) ---
-      const tokenParams = new URLSearchParams();
-      tokenParams.append('username', email); // La API espera 'username'
-      tokenParams.append('password', password);
-
-      const tokenResponse = await axios.post(
-        `${apiUrl}/api/token`, // Endpoint de Token
-        tokenParams, // Datos como form-data
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      const { access_token } = tokenResponse.data;
-
-      // --- PASO 2: Con el token, obtener Usuario y Roles (en paralelo) ---
-      const authHeader = { 'Authorization': `Bearer ${access_token}` };
-
-      // axios.all ejecuta ambas peticiones al mismo tiempo
-      const [userResponse, rolesResponse] = await axios.all([
-        axios.get(`${apiUrl}/api/users/me`, { headers: authHeader }),
-        axios.get(`${apiUrl}/api/users/me/roles`, { headers: authHeader })
-      ]);
-
-      const userData = userResponse.data;
-      const rolesData = rolesResponse.data;
-
-      // --- PASO 3: Llamar al login del Context con TODOS los datos ---
-      login(access_token, userData, rolesData);
-
-      // --- PASO 4: Redirigir al Dashboard ---
+      // El contexto ahora hace todo el trabajo
+      await login(email, password);
+      // Si login() no lanza error, redirigimos
       navigate('/');
 
     } catch (err: any) {
-      // --- Manejo de Errores ---
-      if (axios.isAxiosError(err) && err.response) {
-        if (err.response.status === 401) {
-          setError("Email o contraseña incorrectos.");
-        } else {
-          setError("Ocurrió un error en el servidor. Intente más tarde.");
-        }
-      } else {
-        setError("No se pudo conectar al servidor.");
-      }
-      console.error(err);
+      // Si login() lanza un error, lo mostramos
+      setError(err.message || "Ocurrió un error desconocido.");
     } finally {
-      setIsLoading(false); // Quitar el estado de "cargando"
+      setIsLoading(false); 
     }
   };
 
-
-  // --- TU JSX (SIN CAMBIOS, EXCEPTO EL BOTÓN Y EL ERROR) ---
+  // --- TU JSX (EXACTAMENTE COMO LO TENÍAS) ---
   return (
     <div className="flex h-screen bg-gray-darkL text-white">
       {/* Panel izquierdo con imagen (solo en pantallas grandes) */}
@@ -123,7 +74,7 @@ export const Login = () => {
             <div className="flex items-center justify-center gap-4 mb-4">
               <h1 className="text-4xl font-bold">
                 <span className="text-red-dark">WI</span>SENSOR
-                <div className="absolute  left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-red-400/50 to-transparent" />
+                <div className="absolute  left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-red-400/50 to-transparent" />
               </h1>
             </div>
 
@@ -147,7 +98,7 @@ export const Login = () => {
             className="space-y-6 bg-gray-darkL border border-gray-700 rounded-2xl p-8 shadow-lg"
             onSubmit={handleLogin}
           >
-            {/* --- MENSAJE DE ERROR AÑADIDO --- */}
+            {/* --- MENSAJE DE ERROR --- */}
             {error && (
               <div className="p-3 text-center text-sm text-red-400 bg-red-900/30 border border-red-700 rounded-lg">
                 {error}
@@ -168,7 +119,7 @@ export const Login = () => {
                 <input
                   type="email"
                   id="email"
-                  name="email" // Añadido para que el 'e.target.email' funcione mejor
+                  name="email"
                   className="w-full pl-10 pr-4 py-3 bg-gray-dark border-l-2 border-gray-600 rounded-lg focus:ring-1 focus:ring-red-dark focus:border-red-dark outline-none transition"
                   placeholder="usuario@ejemplo.com"
                   required
@@ -190,7 +141,7 @@ export const Login = () => {
                 <input
                   type="password"
                   id="password"
-                  name="password" // Añadido
+                  name="password"
                   className="w-full pl-10 pr-4 py-3 bg-gray-dark border-l-2 border-gray-600 rounded-lg focus:ring-1 focus:ring-red-dark focus:border-red-dark outline-none transition"
                   placeholder="••••••••"
                   required
@@ -198,7 +149,7 @@ export const Login = () => {
               </div>
             </div>
 
-            {/* --- BOTÓN MODIFICADO (para deshabilitar y mostrar carga) --- */}
+            {/* --- BOTÓN --- */}
             <button
               type="submit"
               disabled={isLoading} // Deshabilitado mientras carga

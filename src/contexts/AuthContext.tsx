@@ -1,46 +1,45 @@
 // src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
+// Importamos el servicio y los nuevos tipos
+import * as authService from '../views/login/services/authService'; 
+import { LoginData } from '../views/login/services/authService';
 
-// 1. Nueva interfaz para los roles (coincide con la API)
-export interface UserRoleInCompany {
-  company_id: number;
-  company_name: string;
-  role: 'admin' | 'editor' | 'viewer'; // Coincide con el Enum del backend
-}
+// (Tus interfaces BaseUser y UserRoleInCompany quedan igual)
+export interface UserRoleInCompany { /* ... */ }
+export interface BaseUser { /* ... */ }
 
-// 2. Nueva interfaz para el usuario (coincide con la API)
-export interface BaseUser {
-  id: number;
-  email: string;
-  is_active: boolean;
-}
-
-// 3. Actualizamos el tipo del Contexto
+// 1. Actualizamos el Contexto
 interface AuthContextType {
   user: BaseUser | null;
-  roles: UserRoleInCompany[]; // Almacenamos los roles aquí
+  roles: UserRoleInCompany[];
   isAuthenticated: boolean;
-  login: (token: string, userData: BaseUser, rolesData: UserRoleInCompany[]) => void;
+  // La firma de login cambia: ahora toma credenciales
+  login: (email: string, password: string) => Promise<void>; 
   logout: () => void;
   loading: boolean;
-  token: string | null; // Es útil exponer el token
+  token: string | null; // El access_token
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<BaseUser | null>(null);
-  const [roles, setRoles] = useState<UserRoleInCompany[]>([]); // Estado para roles
+  const [roles, setRoles] = useState<UserRoleInCompany[]>([]);
   const [token, setToken] = useState<string | null>(null);
+  // NOTA: No necesitamos guardar el refresh_token en el ESTADO de React,
+  // porque los componentes nunca lo usan. Solo vive en localStorage.
   const [loading, setLoading] = useState(true);
 
-  // Verificar autenticación al cargar
+  // 2. useEffect actualizado para cargar todo desde localStorage
   useEffect(() => {
+    setLoading(true);
     const storedToken = localStorage.getItem('access_token');
+    const storedRefreshToken = localStorage.getItem('refresh_token');
     const storedUser = localStorage.getItem('user');
-    const storedRoles = localStorage.getItem('roles'); // Cargar roles
+    const storedRoles = localStorage.getItem('roles');
     
-    if (storedToken && storedUser && storedRoles) {
+    // Solo nos autenticamos si tenemos TODOS los datos
+    if (storedToken && storedRefreshToken && storedUser && storedRoles) {
       try {
         setUser(JSON.parse(storedUser));
         setRoles(JSON.parse(storedRoles));
@@ -53,26 +52,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false);
   }, []);
 
-  // 4. Actualizamos la función 'login'
-  const login = (
-    token: string, 
-    userData: BaseUser, 
-    rolesData: UserRoleInCompany[]
-  ) => {
-    localStorage.setItem('access_token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('roles', JSON.stringify(rolesData)); // Guardar roles
-    
-    setUser(userData);
-    setRoles(rolesData);
-    setToken(token);
+  // 3. ¡Función 'login' REFACTORIZADA!
+  // Ahora es la responsable de la lógica
+  const login = async (email: string, password: string) => {
+    try {
+      // Llama al servicio, que hace todo el trabajo sucio
+      const data: LoginData = await authService.loginWithCredentials(email, password);
+
+      // Si el servicio tuvo éxito, guardamos todo
+      localStorage.setItem('access_token', data.accessToken);
+      localStorage.setItem('refresh_token', data.refreshToken); // <-- ¡Guardamos el refresh token!
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('roles', JSON.stringify(data.roles));
+      
+      // Y actualizamos el estado de React
+      setUser(data.user);
+      setRoles(data.roles);
+      setToken(data.accessToken);
+
+    } catch (error) {
+      // Si el servicio falló, limpiamos todo y lanzamos el error
+      // para que el componente Login lo atrape y muestre.
+      logout();
+      throw error; 
+    }
   };
 
-  // 5. Actualizamos 'logout'
+  // 4. 'logout' actualizado para limpiar TODO
   const logout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token'); // <-- ¡Limpiamos el refresh token!
     localStorage.removeItem('user');
-    localStorage.removeItem('roles'); // Limpiar roles
+    localStorage.removeItem('roles');
     setUser(null);
     setRoles([]);
     setToken(null);
@@ -80,8 +91,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const value = {
     user,
-    roles, // 6. Exponemos los roles
-    isAuthenticated: !!user,
+    roles,
+    isAuthenticated: !!user && !!token, // Más robusto
     login,
     logout,
     loading,

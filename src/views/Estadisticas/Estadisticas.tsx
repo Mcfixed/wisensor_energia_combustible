@@ -1,450 +1,396 @@
-import { useState } from "react";
-import { 
-  AlertTriangle, Cable, Clock, Cpu, Eye, EyeOff, 
-  FileText, Fingerprint, Globe, HardDrive, Lock, 
-  MemoryStick, Network, Shield, ShieldAlert, 
-  Smartphone, Tablet, User, Server
-} from 'lucide-react';
-import { CardProps,StatusDefaultProps } from "../../assets/types/Estadisticas";
-function Card({ children, className = "" }: CardProps) {
-  return (
-    <div className={`flex-1 h-full overflow-hidden bg-gray-darkL rounded-lg border border-gray-700 shadow-sm ${className}`}>
-      {children}
-    </div>
-  );
-}
+import { useState, useMemo } from 'react';
+// Corregido: Asumimos que el hook está en la carpeta central de hooks
+import { useEstadisticas } from './hooks/useDevice';
+// Corregido: Asumimos que los tipos están en tu archivo central de tipos
+import { DeviceDetails, MongoHistoryRecord, DeviceType } from './types/DeviceType';
+import { HardDrive, Building, MapPin, ChevronRight, Loader2, ArrowLeft, BarChart2 } from 'lucide-react';
 
-function StatusIndicator({ status, text }: StatusDefaultProps) {
-  const statusConfig = {
-    secure: { color: "text-green-400", bg: "bg-green-400/10", icon: <Shield className="w-3 h-3" /> },
-    warning: { color: "text-yellow-400", bg: "bg-yellow-400/10", icon: <AlertTriangle className="w-3 h-3" /> },
-    danger: { color: "text-red-400", bg: "bg-red-400/10", icon: <ShieldAlert className="w-3 h-3" /> },
-    neutral: { color: "text-blue-400", bg: "bg-blue-400/10", icon: <Eye className="w-3 h-3" /> }
+// --- ¡¡IMPORTANTE!! ---
+// 1. Instala: npm install chart.js react-chartjs-2
+// 2. Importa los componentes de chart.js
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  TimeScale,
+  ChartOptions,
+  Filler, // <-- ¡¡NUEVO!! Importa Filler para el relleno
+} from 'chart.js';
+
+// 3. Registra los componentes que usarás
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  TimeScale,
+  Filler // <-- ¡¡NUEVO!! Registra Filler
+);
+
+// --- Formateador de Fecha ---
+const formatChartDate = (isoDate: string) => {
+  try {
+    return new Date(isoDate).toLocaleString('es-CL', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return 'invalid date';
+  }
+};
+
+// --- Componente de Gráfico Genérico (con Chart.js) ---
+interface ChartData {
+  time: string; // Fecha formateada
+  [key: string]: any; // Valor
+}
+// --- MODIFICADO: Este componente ahora grafica un RANGO (Min/Max) ---
+interface GenericChartProps {
+  data: ChartData[];
+  dataKeyBase: string; // <-- MODIFICADO (ej: "agg_activePower")
+  name: string;
+  color: string;
+}
+const SensorChart: React.FC<GenericChartProps> = ({ data, dataKeyBase, name, color }) => {
+
+  // Buscamos las claves _min y _max que vienen del backend
+  const keyMin = `${dataKeyBase}_min`;
+  const keyMax = `${dataKeyBase}_max`;
+
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          color: '#D1D5DB', // text-gray-300
+        }
+      },
+      title: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: '#1F2937', // bg-gray-800
+        titleColor: '#F9FAFB', // text-gray-50
+        bodyColor: '#F9FAFB',
+        borderColor: '#4B5563', // border-gray-600
+        borderWidth: 1,
+        mode: 'index', // <-- Mejor para ver min/max al mismo tiempo
+        intersect: false,
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: '#9CA3AF', // text-gray-400
+          maxTicksLimit: 7, // Limitar para que no se sature
+          font: { size: 10 }
+        },
+        grid: {
+          color: '#374151', // border-gray-700
+        }
+      },
+      y: {
+        ticks: {
+          color: '#9CA3AF', // text-gray-400
+          font: { size: 10 }
+        },
+        grid: {
+          color: '#374151', // border-gray-700
+        }
+      }
+    }
   };
-  
+
+  // --- MODIFICADO: Ahora creamos DOS datasets (Min y Max) ---
+  const chartData = {
+    labels: data.map(d => d.time), // Labels (e.g., "29 Oct 10:00")
+    datasets: [
+      {
+        label: `${name} (Máx)`,
+        data: data.map(d => d[keyMax]), // <-- Usa la clave Max
+        borderColor: color,
+        backgroundColor: `${color}80`, // Color con 50% opacidad
+        pointRadius: 1,
+        tension: 0.1,
+        fill: '+1', // <-- Rellena hasta el siguiente dataset (Min)
+      },
+      {
+        label: `${name} (Mín)`,
+        data: data.map(d => d[keyMin]), // <-- Usa la clave Min
+        borderColor: color,
+        backgroundColor: `${color}30`, // Un color más suave
+        pointRadius: 1,
+        tension: 0.1,
+      },
+    ],
+  };
+
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${statusConfig[status].bg} ${statusConfig[status].color}`}>
-      {statusConfig[status].icon}
-      {text}
+    <div className="h-64 w-full bg-gray-darkL p-4 rounded-lg border border-gray-700">
+      <h4 className="text-sm font-semibold text-white mb-4">{name}</h4>
+      {data.length === 0 ? (
+        <div className="flex items-center justify-center h-full text-gray-500">Sin datos</div>
+      ) : (
+        <div className="relative h-full w-full" style={{ height: 'calc(100% - 2rem)' }}>
+          <Line options={chartOptions} data={chartData} />
+        </div>
+      )}
     </div>
   );
+};
+
+
+// --- (VISTA 2) El Panel de Control del Sensor ---
+interface SensorDashboardProps {
+  sensor: DeviceDetails;
+  history: MongoHistoryRecord[];
+  loading: boolean;
+  onBack: () => void;
+  onRangeChange: (range: any) => void;
+  timeRange: string;
 }
+const SensorDashboard: React.FC<SensorDashboardProps> = ({
+  sensor, history, loading, onBack, onRangeChange, timeRange
+}) => {
 
-export const Estadisticas = () => {
-  const [activeTab, setActiveTab] = useState(0);
-  const [showSensitive, setShowSensitive] = useState(false);
-  
-  const securityEvents = [
-    { id: 1, type: "Intento de acceso", source: "192.168.1.45", level: "warning", time: "2 min ago" },
-    { id: 2, type: "Actualización de firewall", source: "Sistema", level: "secure", time: "15 min ago" },
-    { id: 3, type: "Nuevo dispositivo", source: "MAC: 3A:2B:...", level: "neutral", time: "32 min ago" },
-    { id: 4, type: "Escaneo de puertos", source: "45.33.21.10", level: "danger", time: "1 hr ago" }
-  ];
+  // Procesamos los datos de Mongo para las tablas y gráficos
+  const processedData = useMemo(() => {
+    const tableData: { key: string, value: any }[] = [];
+    const chartData: ChartData[] = [];
+    
+    // 1. Usar el *último* registro para la tabla de valores
+    const latestRecord = history[history.length - 1];
+    if (latestRecord && latestRecord.object) {
+      Object.entries(latestRecord.object).forEach(([key, value]) => {
+        const displayValue = typeof value === 'number' ? value.toFixed(2) : String(value);
+        tableData.push({ key, value: displayValue });
+      });
+    }
 
-  const devices = [
-    { id: 1, name: "Servidor Web", type: "server", ip: "192.168.1.10", status: "active", connections: 42 },
-    { id: 2, name: "Admin Laptop", type: "laptop", ip: "192.168.1.15", status: "idle", connections: 3 },
-    { id: 3, name: "IoT Device", type: "iot", ip: "192.168.1.22", status: "active", connections: 8 },
-    { id: 4, name: "Backup Server", type: "server", ip: "192.168.1.11", status: "maintenance", connections: 2 }
-  ];
+    // 2. Usar *todos* los registros para los gráficos
+    history.forEach(record => {
+      const time = formatChartDate(record.time);
+      const values = record.object || {};
+      chartData.push({ time, ...values });
+    });
 
-  const tabs = [
-    { id: 0, label: "Seguridad", content: "Resumen de seguridad" },
-    { id: 1, label: "Dispositivos", content: "Lista de dispositivos" },
-    { id: 2, label: "Registros", content: "Registros del sistema" },
-    { id: 3, label: "Configuración", content: "Ajustes de monitoreo" },
-  ];
+    return { tableData, chartData };
+  }, [history]);
+
+  // Define qué gráficos mostrar según el tipo de sensor
+  const getChartsByType = (type: DeviceType) => {
+    if (type === DeviceType.COMBUSTIBLE) {
+      return (
+        <>
+          <SensorChart data={processedData.chartData} dataKeyBase="volume_L_S0" name="Volumen (L) S0" color="#34D399" />
+          <SensorChart data={processedData.chartData} dataKeyBase="volume_L_S1" name="Volumen (L) S1" color="#F87171" />
+          <SensorChart data={processedData.chartData} dataKeyBase="pressure_Bar_S0" name="Presión (Bar) S0" color="#60A5FA" />
+        </>
+      );
+    }
+    if (type === DeviceType.ENERGIA) {
+      return (
+        <>
+          <SensorChart data={processedData.chartData} dataKeyBase="agg_activePower" name="Potencia Activa (W)" color="#34D399" />
+          <SensorChart data={processedData.chartData} dataKeyBase="agg_voltage" name="Voltaje (V)" color="#F87171" />
+          <SensorChart data={processedData.chartData} dataKeyBase="agg_current" name="Corriente (A)" color="#60A5FA" />
+        </>
+      );
+    }
+    return <div className="text-gray-400">Tipo de sensor no reconocido.</div>;
+  };
 
   return (
-    <main className="flex-1 h-screen overflow-hidden p-2 bg-gray-dark">
-      <div className="flex flex-col h-full gap-2">
-        {/* Header */}
-        <div className="h-16 flex gap-2">
-          <Card className="w-64 flex items-center px-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
-                <Fingerprint className="w-4 h-4 text-purple-500" />
-              </div>
-              <h1 className="text-lg font-semibold text-white">Security Center</h1>
-            </div>
-          </Card>
-          
-          <Card className="flex-1 flex items-center px-4">
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-full bg-green-500/20">
-                    <Network className="w-4 h-4 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Estado de red</p>
-                    <p className="text-sm font-medium text-white">Protegida</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-full bg-blue-500/20">
-                    <Lock className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Firewall</p>
-                    <p className="text-sm font-medium text-white">Activo</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-full bg-yellow-500/20">
-                    <User className="w-4 h-4 text-yellow-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">Sesiones</p>
-                    <p className="text-sm font-medium text-white">12 activas</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setShowSensitive(!showSensitive)}
-                  className="flex items-center gap-1 text-xs text-gray-300 hover:text-white"
-                >
-                  {showSensitive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  {showSensitive ? "Ocultar datos" : "Mostrar datos"}
-                </button>
-                <div className="h-4 w-px bg-gray-600"></div>
-                <div className="flex items-center gap-1 text-xs text-gray-300">
-                  <Clock className="w-4 h-4" />
-                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </div>
-            </div>
-          </Card>
+    // --- MODIFICADO: 'h-full' cambiado por 'h-screen' ---
+    <div className="p-4 h-screen flex flex-col">
+      {/* Header del Panel (Sin cambios) */}
+      <div className="flex justify-between items-center mb-1 pb-2 border-b border-gray-700">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={onBack}
+            className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-gray-700"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">{sensor.name}</h1>
+            <p className="text-gray-400 text-sm">
+              {sensor.company_name} / {sensor.center_name}
+            </p>
+          </div>
         </div>
-
-        {/* Contenido principal */}
-        <div className="flex-1 flex gap-2">
-          {/* Columna izquierda - Métricas y gráficos */}
-          <div className="w-2/3 flex flex-col gap-2">
-            {/* Fila superior */}
-            <div className="h-1/3 flex gap-2">
-              <Card>
-                <div className="p-3 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-medium text-white flex items-center gap-2">
-                      <Cpu className="w-4 h-4 text-blue-400" />
-                      Rendimiento del Sistema
-                    </h2>
-                    <StatusIndicator status="secure" text="Estable" />
-                  </div>
-                  <div className="flex-1 grid grid-cols-3 gap-3">
-                    <div className="bg-gray-dark rounded p-2 flex flex-col items-center justify-center">
-                      <div className="text-2xl font-bold text-green-400">78%</div>
-                      <div className="text-xs text-gray-400 mt-1">CPU</div>
-                      <div className="w-full h-1 mt-2 bg-gray-700 rounded-full">
-                        <div className="h-1 rounded-full bg-green-400" style={{ width: '78%' }}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark rounded p-2 flex flex-col items-center justify-center">
-                      <div className="text-2xl font-bold text-yellow-400">64%</div>
-                      <div className="text-xs text-gray-400 mt-1">RAM</div>
-                      <div className="w-full h-1 mt-2 bg-gray-700 rounded-full">
-                        <div className="h-1 rounded-full bg-yellow-400" style={{ width: '64%' }}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark rounded p-2 flex flex-col items-center justify-center">
-                      <div className="text-2xl font-bold text-purple-400">42%</div>
-                      <div className="text-xs text-gray-400 mt-1">Disco</div>
-                      <div className="w-full h-1 mt-2 bg-gray-700 rounded-full">
-                        <div className="h-1 rounded-full bg-purple-400" style={{ width: '42%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card>
-                <div className="p-3 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-medium text-white flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-green-400" />
-                      Actividad de Red
-                    </h2>
-                    <StatusIndicator status="warning" text="Alerta menor" />
-                  </div>
-                  <div className="flex-1 grid grid-cols-2 gap-3">
-                    <div className="bg-gray-dark rounded p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Entrante</span>
-                        <span className="text-xs font-medium text-white">3.2 MB/s</span>
-                      </div>
-                      <div className="w-full h-1.5 mt-1 bg-gray-700 rounded-full">
-                        <div className="h-1.5 rounded-full bg-blue-400" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark rounded p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Saliente</span>
-                        <span className="text-xs font-medium text-white">1.8 MB/s</span>
-                      </div>
-                      <div className="w-full h-1.5 mt-1 bg-gray-700 rounded-full">
-                        <div className="h-1.5 rounded-full bg-purple-400" style={{ width: '35%' }}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark rounded p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Conexiones</span>
-                        <span className="text-xs font-medium text-white">142</span>
-                      </div>
-                      <div className="w-full h-1.5 mt-1 bg-gray-700 rounded-full">
-                        <div className="h-1.5 rounded-full bg-green-400" style={{ width: '48%' }}></div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark rounded p-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Latencia</span>
-                        <span className="text-xs font-medium text-white">28ms</span>
-                      </div>
-                      <div className="w-full h-1.5 mt-1 bg-gray-700 rounded-full">
-                        <div className="h-1.5 rounded-full bg-yellow-400" style={{ width: '22%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-            
-            {/* Fila media - Mapa de red */}
-            <div className="h-1/3">
-              <Card>
-                <div className="p-3 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-sm font-medium text-white flex items-center gap-2">
-                      <Cable className="w-4 h-4 text-purple-400" />
-                      Mapa de Red
-                    </h2>
-                    <StatusIndicator status="neutral" text="Monitoreando" />
-                  </div>
-                  <div className="flex-1 bg-gray-dark rounded flex items-center justify-center relative">
-                    {/* Simulación de mapa de red */}
-                    <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzQwNDA0MCIgc3Ryb2tlLXdpZHRoPSIxIj48cGF0aCBkPSJNMCAwaDQwdjQwSDB6Ii8+PC9nPjwvc3ZnPg==')]"></div>
-                    
-                    {/* Dispositivos en la red */}
-                    <div className="relative z-10 grid grid-cols-4 gap-6 w-full h-full p-4">
-                      {/* Servidor central */}
-                      <div className="col-span-1 col-start-2 row-start-2 flex flex-col items-center">
-                        <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-1">
-                          <Server className="w-5 h-5 text-purple-400" />
-                        </div>
-                        <span className="text-xs text-white">Core Server</span>
-                        <span className="text-[10px] text-gray-400">192.168.1.1</span>
-                      </div>
-                      
-                      {/* Dispositivos conectados */}
-                      <div className="col-span-1 flex flex-col items-center justify-end">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center mb-1">
-                          <Smartphone className="w-4 h-4 text-blue-400" />
-                        </div>
-                        <span className="text-xs text-white">Mobile</span>
-                      </div>
-                      
-                      <div className="col-span-1 flex flex-col items-center justify-start">
-                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mb-1">
-                          <Tablet className="w-4 h-4 text-green-400" />
-                        </div>
-                        <span className="text-xs text-white">Tablet</span>
-                      </div>
-                      
-                      <div className="col-span-1 flex flex-col items-center justify-center">
-                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center mb-1">
-                          <MemoryStick className="w-4 h-4 text-yellow-400" />
-                        </div>
-                        <span className="text-xs text-white">NAS</span>
-                      </div>
-                      
-                      {/* Líneas de conexión (simuladas con pseudo-elementos) */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <svg width="100%" height="100%" className="text-gray-600">
-                          <line x1="25%" y1="50%" x2="50%" y2="50%" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-                          <line x1="50%" y1="50%" x2="75%" y2="50%" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-                          <line x1="50%" y1="50%" x2="50%" y2="25%" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-                          <line x1="50%" y1="50%" x2="50%" y2="75%" stroke="currentColor" strokeWidth="1" strokeDasharray="2,2" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-            
-            {/* Fila inferior - Dispositivos */}
-            <div className="h-1/3">
-              <Card>
-                <div className="p-3 h-full flex flex-col">
-                  <h2 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
-                    <HardDrive className="w-4 h-4 text-yellow-400" />
-                    Almacenamiento y Backup
-                  </h2>
-                  <div className="flex-1 grid grid-cols-3 gap-3">
-                    <div className="bg-gray-dark rounded p-3 flex flex-col">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400">Principal</span>
-                        <span className="text-xs font-medium text-white">1.2TB/2TB</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full">
-                        <div className="h-2 rounded-full bg-blue-400" style={{ width: '60%' }}></div>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-400">SSD NVMe</div>
-                    </div>
-                    
-                    <div className="bg-gray-dark rounded p-3 flex flex-col">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400">Backup</span>
-                        <span className="text-xs font-medium text-white">4.5TB/8TB</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full">
-                        <div className="h-2 rounded-full bg-green-400" style={{ width: '56%' }}></div>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-400">RAID 5</div>
-                    </div>
-                    
-                    <div className="bg-gray-dark rounded p-3 flex flex-col">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400">Cloud</span>
-                        <span className="text-xs font-medium text-white">150GB/500GB</span>
-                      </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full">
-                        <div className="h-2 rounded-full bg-purple-400" style={{ width: '30%' }}></div>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-400">Último: Hoy 03:42</div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-          
-          {/* Columna derecha - Eventos y pestañas */}
-          <div className="w-1/3 flex flex-col gap-2">
-            <Card className="h-1/2">
-              <div className="p-3 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-medium text-white flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-red-400" />
-                    Eventos de Seguridad
-                  </h2>
-                  <button className="text-xs text-gray-400 hover:text-white">Ver todos</button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {securityEvents.map(event => (
-                    <div key={event.id} className="mb-3 pb-3 border-b border-gray-700 last:border-0 last:mb-0 last:pb-0">
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 p-1 rounded-full ${event.level === 'danger' ? 'bg-red-400/20' : event.level === 'warning' ? 'bg-yellow-400/20' : event.level === 'secure' ? 'bg-green-400/20' : 'bg-blue-400/20'}`}>
-                          {event.level === 'danger' ? <ShieldAlert className="w-3 h-3 text-red-400" /> : 
-                           event.level === 'warning' ? <AlertTriangle className="w-3 h-3 text-yellow-400" /> :
-                           <Shield className="w-3 h-3 text-green-400" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <p className="text-xs text-white">{event.type}</p>
-                            <span className="text-xs text-gray-400">{event.time}</span>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            {showSensitive ? event.source : "••••••••••••••••"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-            
-            <Card className="flex-1">
-              <div className="flex flex-col h-full">
-                {/* Barra de pestañas */}
-                <div className="flex border-b border-gray-700">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`px-3 py-2 text-xs font-medium flex-1 text-center transition-colors duration-150 ${activeTab === tab.id
-                          ? "text-white border-b-2 border-purple-500"
-                          : "text-gray-400 hover:text-white hover:bg-gray-dark"
-                        }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Contenido de pestañas */}
-                <div className="flex-1 p-3 overflow-auto">
-                  {activeTab === 0 && (
-                    <div className="space-y-4">
-                      <div className="bg-gray-dark rounded p-3">
-                        <h3 className="text-xs font-medium text-white mb-2 flex items-center gap-1">
-                          <Shield className="w-3 h-3 text-green-400" />
-                          Protecciones activas
-                        </h3>
-                        <ul className="text-xs text-gray-300 space-y-2">
-                          <li className="flex items-center gap-2">• Firewall de aplicaciones</li>
-                          <li className="flex items-center gap-2">• Detección de intrusos</li>
-                          <li className="flex items-center gap-2">• Cifrado SSL</li>
-                          <li className="flex items-center gap-2">• Autenticación 2FA</li>
-                        </ul>
-                      </div>
-                      
-                      <div className="bg-gray-dark rounded p-3">
-                        <h3 className="text-xs font-medium text-white mb-2 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 text-yellow-400" />
-                          Vulnerabilidades
-                        </h3>
-                        <div className="text-xs text-gray-300">
-                          <p>2 vulnerabilidades de media prioridad</p>
-                          <p className="mt-1 text-gray-400">Último escaneo: Hoy 04:00</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {activeTab === 1 && (
-                    <div className="space-y-3">
-                      {devices.map(device => (
-                        <div key={device.id} className="bg-gray-dark rounded p-2 flex items-center gap-3">
-                          <div className={`p-2 rounded-full ${device.status === 'active' ? 'bg-green-500/20' : device.status === 'idle' ? 'bg-blue-500/20' : 'bg-yellow-500/20'}`}>
-                            {device.type === 'server' ? <Server className="w-4 h-4 text-green-400" /> : 
-                             device.type === 'laptop' ? <Smartphone className="w-4 h-4 text-blue-400" /> :
-                             <MemoryStick className="w-4 h-4 text-yellow-400" />}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-white">{device.name}</p>
-                            <p className="text-xs text-gray-400">
-                              {showSensitive ? device.ip : "••••••••••••"}
-                            </p>
-                          </div>
-                          <div className="text-xs font-medium text-white">
-                            {device.connections} conex.
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {activeTab === 2 && (
-                    <div className="text-xs text-gray-300 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span>Registros del sistema disponibles</span>
-                      </div>
-                      <p className="text-gray-400 mt-2">Seleccione un dispositivo para ver sus registros detallados.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          </div>
+        {/* Selector de Rango de Fecha (Sin cambios) */}
+        <div className="flex space-x-1 bg-gray-darkL p-1 rounded-lg">
+          {['1d', '7d', '30d'].map(range => (
+            <button
+              key={range}
+              onClick={() => onRangeChange(range)}
+              className={`px-3 py-1 text-sm rounded-md ${
+                timeRange === range
+                  ? 'bg-red-dark text-white'
+                  : 'text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
         </div>
       </div>
-    </main>
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center text-white">
+          <Loader2 className="animate-spin mr-2" /> Cargando historial...
+        </div>
+      ) : (
+        /* --- MODIFICADO: Se añadió 'min-h-0' --- */
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden min-h-0">
+          
+          {/* Columna 1: Tabla de Últimos Valores (Se añadió 'min-h-0') */}
+          <div className="lg:col-span-1 flex flex-col overflow-hidden bg-gray-dark rounded-lg border border-gray-700 min-h-0">
+            <h3 className="text-lg font-semibold text-white p-4 border-b border-gray-700">
+              Últimos Valores (Agregados)
+            </h3>
+            <div className="overflow-y-auto">
+              <table className="min-w-full divide-y divide-gray-700">
+                <tbody className="bg-gray-dark divide-y divide-gray-700">
+                  {processedData.tableData.map(row => (
+                    <tr key={row.key}>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-300">{row.key}</td>
+                      <td className="px-4 py-3 text-sm text-white font-mono text-right">{row.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          {/* Columna 2: Gráficos (Se quitó 'overflow-y-auto' y se añadió 'min-h-0') */}
+          <div className="lg:col-span-2 flex flex-col gap-2 pr-2 min-h-0">
+            {getChartsByType(sensor.type)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// --- (VISTA 1) La Tabla Principal de Sensores ---
+export const Estadisticas = () => {
+  const {
+    selectedSensor,
+    deviceList,
+    sensorHistory,
+    loadingList,
+    loadingHistory,
+    error,
+    selectSensor,
+    deselectSensor,
+    handleTimeRangeChange,
+    timeRange
+  } = useEstadisticas();
+
+  // --- Si hay un sensor seleccionado, muestra el Panel ---
+  if (selectedSensor) {
+    return (
+      <SensorDashboard
+        sensor={selectedSensor}
+        history={sensorHistory}
+        loading={loadingHistory}
+        onBack={deselectSensor}
+        onRangeChange={handleTimeRangeChange}
+        timeRange={timeRange}
+      />
+    );
+  }
+  
+  // --- Si no, muestra la Tabla (Vista 1) ---
+  return (
+    <div className="p-4 h-full flex flex-col">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Estadísticas de Sensores</h1>
+          <p className="text-gray-400 text-sm">Selecciona un sensor para ver su historial.</p>
+        </div>
+      </div>
+
+      {loadingList ? (
+        <div className="flex-1 flex items-center justify-center text-white">
+          <Loader2 className="animate-spin mr-2" /> Cargando lista de sensores...
+        </div>
+      ) : error ? (
+        <div className="p-4 text-red-300 bg-red-900/50 border border-red-700 rounded-lg">Error: {error}</div>
+      ) : (
+        <div className="flex-1 overflow-auto rounded-lg border border-gray-700">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-darkL">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Sensor (Nombre)</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">DevEUI</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Empresa</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Centro</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Acción</th>
+              </tr>
+            </thead>
+            <tbody className="bg-gray-dark divide-y divide-gray-700">
+              {deviceList.map((device) => (
+                <tr key={device.id} className="hover:bg-gray-darkL transition-colors">
+                  
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <HardDrive size={18} className={`mr-3 ${device.status === 'active' ? 'text-green-500' : 'text-gray-500'}`} />
+                      <span className="text-white font-medium">{device.name}</span>
+                    </div>
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 font-mono">
+                    {device.dev_eui}
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <div className="flex items-center">
+                      <Building size={14} className="mr-2 text-gray-500" />
+                      {device.company_name}
+                    </div>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                    <div className="flex items-center">
+                      <MapPin size={14} className="mr-2 text-gray-500" />
+                      {device.center_name}
+                    </div>
+                  </td>
+                  
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => selectSensor(device)}
+                      className="text-red-dark hover:text-red-400 p-1 rounded hover:bg-gray-700/50 flex items-center"
+                      title="Ver Historial"
+                    >
+                      <BarChart2 size={16} className="mr-1" />
+                      <ChevronRight size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 };

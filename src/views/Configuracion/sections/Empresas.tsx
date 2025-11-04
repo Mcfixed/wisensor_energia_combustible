@@ -1,398 +1,365 @@
-import { useEffect, useState } from 'react';
-import { Edit, Trash2, Plus, X } from 'lucide-react';
-import { Comuna, Empresa } from '../../../types/Trazabilidad';
-import { usePermission } from '../../../hooks/rolesypermisos/usePermission';
+import { useState } from 'react';
+import { Edit, Trash2, Plus, X, Building, MapPin, Loader2 } from 'lucide-react';
+import { useEmpresasYCentros } from '../hooks/useCompanieCenter';
+import { Company, Center } from '../types/EmpresaCenterTypes';
+// Ajusta la ruta a tu hook de permisos
+import { usePermission } from '../../../hooks/rolesypermisos/usePermission'; 
 
 export const Empresas = () => {
-  const apiUrl = import.meta.env.VITE_API_BASE_URL;
+  // --- Permisos (Ejemplos) ---
   const crearEmpresa = usePermission("crear empresas");
-  const [empresas, setEmpresa] = useState<Empresa[]>([]);
-  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<Empresa | null>(null);
-  const [comunas, setComunas] = useState<Comuna[]>([]);
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [modalEdicion, setModalEdicion] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const [formData, setFormData] = useState({
-    id: '',
-    nombre: '',
-    rut: '',
-    contacto: '',
-    correoElectronico: '',
-    direccion: '',
-    idComuna: 0
-  });
-
-  // Obtener empresas desde la API
-  useEffect(() => {
-    const fetchEmpresas = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`${apiUrl}/empresa`)
-        const responseComunas = await fetch(`${apiUrl}/comuna`)
-
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const dataComunas = await responseComunas.json();
-
-        if (!data.res || !data.data || !dataComunas.res || !dataComunas.data) {
-          throw new Error("No se encontraron empresas");
-        }
-
-
-        setEmpresa(data.data);
-        setComunas(dataComunas.data);
-        setLoading(false);
-      } catch (err) {
-        const error = err as Error;
-        setError(error.message);
-        setLoading(false);
-      }
-    };
-
-    fetchEmpresas();
-  }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const crearCentro = usePermission("crear centros");
+  const placeholderPermissions = {
+    editarEmpresa: true,
+    eliminarEmpresa: true,
+    editarCentro: true,
+    eliminarCentro: true,
   };
 
-  const abrirModalNuevo = () => {
-    setFormData({
-      id: '',
-      nombre: '',
-      rut: '',
-      contacto: '',
-      correoElectronico: '',
-      direccion: '',
-      idComuna: 0
-    });
-    setModalAbierto(true);
-    setModalEdicion(false);
-  };
+  // --- Hook de Lógica ---
+  const {
+    companies,
+    loading,
+    error,
+    addCompany,
+    editCompany,
+    removeCompany,
+    addCenter,
+    editCenter,
+    removeCenter,
+  } = useEmpresasYCentros();
 
-  const abrirModalEdicion = (empresa: Empresa) => {
-    setEmpresaSeleccionada(empresa);
-    setFormData({
-      id: empresa.id.toString(), // number → string
-      nombre: empresa.nombre,
-      rut: empresa.rut,
-      contacto: empresa.contacto,
-      correoElectronico: empresa.correoElectronico,
-      direccion: empresa.direccion,
-      idComuna: empresa.idComuna
-    });
-    setModalAbierto(true);
-    setModalEdicion(true);
-  };
+  // --- Estados de los Modales ---
+  const [modalEmpresa, setModalEmpresa] = useState<Company | 'new' | null>(null);
+  const [formEmpresaName, setFormEmpresaName] = useState('');
+  
+  const [modalCentro, setModalCentro] = useState<Center | 'new' | null>(null);
+  const [formCentroName, setFormCentroName] = useState('');
+  const [formCentroCompanyId, setFormCentroCompanyId] = useState<number | null>(null);
+  
+  // *** INICIO DE LA CORRECCIÓN ***
+  // Nuevo estado para saber si el modal de centro se abrió en modo "global"
+  const [isCentroGlobalAdd, setIsCentroGlobalAdd] = useState(false);
+  // *** FIN DE LA CORRECCIÓN ***
+  
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // --- Handlers de Modales (Empresa) ---
+  const abrirModalEmpresa = (empresa: Company | 'new') => {
+    setModalEmpresa(empresa);
+    setFormEmpresaName(empresa === 'new' ? '' : empresa.name);
+    setFormError(null);
+  };
+  const cerrarModalEmpresa = () => setModalEmpresa(null);
+
+  const handleSubmitEmpresa = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!formEmpresaName) return;
+    setFormError(null);
     try {
-      setLoading(true);
+      if (modalEmpresa === 'new') {
+        await addCompany({ name: formEmpresaName });
+      } else if (modalEmpresa) {
+        await editCompany(modalEmpresa.id, { name: formEmpresaName });
+      }
+      cerrarModalEmpresa();
+    } catch (err) {
+      setFormError((err as Error).message);
+    }
+  };
+  
+  const handleEliminarEmpresa = async (empresa: Company) => {
+    // Validacion: No permitir borrar empresa si tiene centros
+    if (empresa.centers.length > 0) {
+      // Usa un modal más bonito si tienes uno
+      alert("Error: No puedes eliminar una empresa que tiene centros asignados. Primero elimina los centros.");
+      return;
+    }
+    if (window.confirm(`¿Seguro que quieres eliminar la empresa "${empresa.name}"?`)) {
+      try {
+        await removeCompany(empresa.id);
+      } catch (err) {
+         window.alert("Error al eliminar: " + (err as Error).message);
+      }
+    }
+  };
 
-      if (modalEdicion && empresaSeleccionada) {
-        // Convertir formData.id a number para actualizar
-        // Actualizar empresa
-        const response = await fetch(`${apiUrl}/empresa/${empresaSeleccionada.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nombre: formData.nombre,
-            rut: formData.rut,
-            correoElectronico: formData.correoElectronico,
-            contacto: formData.contacto,
-            direccion: formData.direccion,
-            idComuna: formData.idComuna
-          })
-        });
+  // --- Handlers de Modales (Centro) ---
+  const abrirModalCentro = (centro: Center | 'new', company?: Company) => {
+    setModalCentro(centro);
+    setFormCentroName(centro === 'new' ? '' : centro.name);
+    setFormError(null);
 
-
-        const updatedEmpresa = await response.json();
-
-        if (!response.ok) {
-          throw new Error('Error al actualizar el centro');
-        }
-
-
-        // Actualizar el estado local
-        setEmpresa(empresas.map(c =>
-          c.id === empresaSeleccionada.id ? updatedEmpresa.data : c
-        ));
+    // *** INICIO DE LA CORRECCIÓN ***
+    if (centro === 'new') {
+      if (company) {
+        // --- Flujo 2: Botón de Fila (Req 5) ---
+        // La compañía está pre-fijada
+        setFormCentroCompanyId(company.id);
+        setIsCentroGlobalAdd(false);
       } else {
-        // nueva empresa
-        console.log(formData);
-        const response = await fetch(`${apiUrl}/empresa`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nombre: formData.nombre,
-            rut: formData.rut,
-            correoElectronico: formData.correoElectronico,
-            contacto: formData.contacto,
-            direccion: formData.direccion,
-            idComuna: formData.idComuna
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Error al crear el centro');
-        }
-
-        const nuevoEmpresa = await response.json();
-
-        // Agregar el nuevo centro al estado local
-        setEmpresa([...empresas, nuevoEmpresa.data]);
+        // --- Flujo 1: Botón Global (Req 4) ---
+        // Mostraremos el dropdown, pre-seleccionamos la primera empresa
+        setFormCentroCompanyId(companies[0]?.id || null); 
+        setIsCentroGlobalAdd(true); // Le decimos al modal que muestre el <select>
       }
-
-      setModalAbierto(false);
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message);
-    } finally {
-      setLoading(false);
+    } else {
+      // --- Flujo 3: Editar Centro ---
+      // Modo edición, la compañía es fija
+      setFormCentroCompanyId(centro.company_id);
+      setIsCentroGlobalAdd(false);
     }
+    // *** FIN DE LA CORRECCIÓN ***
   };
+  
+  const cerrarModalCentro = () => setModalCentro(null);
 
-  const eliminarRegistro = async (id: number) => {
+  const handleSubmitCentro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formCentroName || !formCentroCompanyId) {
+      setFormError("Nombre y empresa son requeridos.");
+      return;
+    }
+    setFormError(null);
     try {
-      setLoading(true);
-      const response = await fetch(`${apiUrl}/empresa/${id}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        throw new Error('Error al eliminar el centro');
+      if (modalCentro === 'new') {
+        await addCenter({ name: formCentroName, company_id: formCentroCompanyId });
+      } else if (modalCentro) {
+        // Solo permitimos editar el nombre
+        await editCenter(modalCentro.id, { name: formCentroName });
       }
-      setEmpresa(empresas.filter(c => c.id !== id));
+      cerrarModalCentro();
     } catch (err) {
-      const error = err as Error;
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      setFormError((err as Error).message);
     }
-
   };
 
+  const handleEliminarCentro = async (centro: Center) => {
+    if (window.confirm(`¿Seguro que quieres eliminar el centro "${centro.name}"?`)) {
+      try {
+        await removeCenter(centro.id, centro.company_id);
+      } catch (err) {
+        window.alert("Error al eliminar: " + (err as Error).message);
+      }
+    }
+  };
 
-  if (loading && empresas.length === 0) {
+  if (loading) {
     return (
-      <div className="p-4 h-full flex items-center justify-center">
-        <div className="text-white">Cargando empresas...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 h-full flex items-center justify-center">
-        <div className="text-red-500">Error: {error}</div>
+      <div className="p-4 h-full flex items-center justify-center text-white">
+        <Loader2 className="animate-spin mr-2" /> Cargando datos...
       </div>
     );
   }
 
   return (
-    <div className="p-4 h-full">
-      <div className="w-full mx-auto h-full flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Gestión de Empresas</h1>
-            <p className="text-gray-400 text-sm">Administra las empresas asociadas al sistema</p>
-          </div>
-          {crearEmpresa&&(
+    <div className="p-4 h-full flex flex-col">
+      {/* Header y Botones Globales (Req 4) */}
+      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700/40">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Gestión de Empresas y Centros</h1>
+          <p className="text-gray-400 text-sm">Administra las empresas y sus centros operativos.</p>
+        </div>
+        <div className="space-x-2">
+          
             <button
-            onClick={abrirModalNuevo}
-            className="bg-red-dark hover:bg-red-dark/90 text-white px-4 py-2 rounded-lg flex items-center transition-colors"
-          >
-            <Plus size={18} className="mr-2" />
-            Agregar Empresa
-          </button>)}
+              onClick={() => abrirModalEmpresa('new')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center"
+            >
+              <Plus size={18} className="mr-2" /> Nueva Empresa
+            </button>
+          
+          
+            <button
+              onClick={() => abrirModalCentro('new')} // Flujo 1
+              className="bg-red-dark hover:bg-red-dark/90 text-white px-4 py-2 rounded-lg flex items-center"
+            >
+              <Plus size={18} className="mr-2" /> Nuevo Centro
+            </button>
           
         </div>
+      </div>
+      
+      {error && (
+         <div className="p-4 mb-4 text-red-300 bg-red-900/50 border border-red-700 rounded-lg">Error: {error}</div>
+      )}
 
-        {/* Tabla */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="overflow-x-auto rounded-lg border border-gray-700 flex-1">
-            <table className="min-w-full divide-y divide-gray-700">
-              <thead className="bg-gray-darkL">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Nombre</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">R.U.T</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Correo Electronico</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contacto</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Direccion</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Comuna</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="bg-gray-dark divide-y divide-gray-700">
-                {empresas.map((registro) => (
-                  <tr key={registro.id} className="hover:bg-gray-darkL transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">{registro.nombre}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{registro.rut}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{registro.correoElectronico}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{registro.contacto}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{registro.direccion}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{registro.comuna?.nombre}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      {/* <button
-                        onClick={() => abrirModalEdicion(registro)}
-                        className="text-blue-400 hover:text-blue-300 p-1 rounded hover:bg-gray-700/50 transition-colors"
-                        title="Editar"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => eliminarRegistro(registro.id)}
-                        className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-gray-700/50 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={16} />
-                      </button> */}
-                      not authorized
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      {/* Tabla (Req 1, 2, 3) */}
+      <div className="flex-1 overflow-auto border border-gray-700/40">
+        <table className="min-w-full divide-y divide-gray-700">
+          <thead className="bg-gray-darkL">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Empresa</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Centros</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="bg-gray-dark divide-y divide-gray-700">
+            {companies.map((empresa) => (
+              <tr key={empresa.id} className="hover:bg-gray-darkL transition-colors">
+                
+                <td className="px-6 py-4 whitespace-nowrap align-top">
+                  <div className="flex items-center">
+                    <Building size={18} className="mr-3 text-gray-400" />
+                    <span className="text-white font-medium">{empresa.name}</span>
+                  </div>
+                </td>
+                
+                <td className="px-6 py-4 align-top">
+                  {/* (Req 3) Columna de Centros */}
+                  <div className="flex flex-wrap gap-2">
+                    {empresa.centers.length === 0 && (
+                      <span className="text-xs text-gray-500">Sin centros</span>
+                    )}
+                    {empresa.centers.map(centro => (
+                      <div key={centro.id} className="group relative flex items-center bg-gray-700 text-gray-200 text-xs px-2 py-1 rounded-full">
+                        <MapPin size={12} className="mr-1 text-red-dark" />
+                        {centro.name}
+                        {/* Mini-acciones de centro */}
+                        <div className="absolute left-0 bottom-full mb-1 flex-col p-1 bg-gray-darkL rounded border border-gray-600 shadow-lg opacity-0 group-hover:opacity-100 group-hover:flex z-10 transition-opacity">
+                          {placeholderPermissions.editarCentro && 
+                            <button onClick={() => abrirModalCentro(centro, empresa)} className="text-blue-400 hover:bg-gray-700 p-1 rounded"><Edit size={14} /></button>}
+                          {placeholderPermissions.eliminarCentro && 
+                            <button onClick={() => handleEliminarCentro(centro)} className="text-red-400 hover:bg-gray-700 p-1 rounded"><Trash2 size={14} /></button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </td>
+                
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 align-top">
+                  {/* (Req 5) Botón de fila "Agregar Centro" */}
+                  {placeholderPermissions.crearCentro && (
+                    <button
+                      onClick={() => abrirModalCentro('new', empresa)} // Flujo 2
+                      className="text-green-400 hover:text-green-300 p-1 rounded hover:bg-gray-700/50"
+                      title="Agregar Centro"
+                    >
+                      <MapPin size={16} />
+                    </button>
+                  )}
+                  {placeholderPermissions.editarEmpresa && (
+                    <button
+                      onClick={() => abrirModalEmpresa(empresa)}
+                      className="text-blue-400 hover:text-blue-300 p-1 rounded hover:bg-gray-700/50"
+                      title="Editar Empresa"
+                    >
+                      <Edit size={16} />
+                    </button>
+                  )}
+                  {placeholderPermissions.eliminarEmpresa && (
+                    <button
+                      onClick={() => handleEliminarEmpresa(empresa)}
+                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-gray-700/50"
+                      title="Eliminar Empresa"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        {/* Modal */}
-        {modalAbierto && (
-          <div className="fixed inset-0 bg-gray-600/40 bg-opacity-70 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-darkL rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+      {/* --- MODALES --- */}
+
+      {/* Modal de Empresa (Crear/Editar) */}
+      {(modalEmpresa) && (
+        <div className="fixed inset-0 bg-gray-600/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-darkL rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+            <form onSubmit={handleSubmitEmpresa}>
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-white">
-                    {modalEdicion ? 'Editar Empresa' : 'Nueva Empresa'}
+                    {modalEmpresa === 'new' ? 'Nueva Empresa' : 'Editar Empresa'}
                   </h2>
-                  <button
-                    onClick={() => setModalAbierto(false)}
-                    className="text-gray-400 hover:text-gray-300 p-1 rounded-full hover:bg-gray-700"
-                  >
+                  <button type="button" onClick={cerrarModalEmpresa} className="text-gray-400 hover:text-gray-300 p-1 rounded-full hover:bg-gray-700">
                     <X size={20} />
                   </button>
                 </div>
+                {formError && <div className="text-red-400 text-sm mb-2">{formError}</div>}
+                <label htmlFor="empresaName" className="block text-sm font-medium text-gray-300 mb-1">Nombre *</label>
+                <input
+                  type="text"
+                  id="empresaName"
+                  value={formEmpresaName}
+                  onChange={(e) => setFormEmpresaName(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark"
+                  required autoFocus
+                />
+              </div>
+              <div className="flex justify-end space-x-3 p-4 bg-gray-darkL/50 border-t border-gray-700 rounded-b-lg">
+                <button type="button" onClick={cerrarModalEmpresa} className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-red-dark rounded-md text-white hover:bg-red-dark/90">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label htmlFor="nombre" className="block text-sm font-medium text-gray-300 mb-1">Nombre *</label>
-                    <input
-                      type="text"
-                      id="nombre"
-                      name="nombre"
-                      value={formData.nombre}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="rut" className="block text-sm font-medium text-gray-300 mb-1">RUT *</label>
-                    <input
-                      type="text"
-                      id="rut"
-                      name="rut"
-                      value={formData.rut}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="correoElectronico" className="block text-sm font-medium text-gray-300 mb-1">Email *</label>
-                    <input
-                      type="correoElectronico"
-                      id="correoElectronico"
-                      name="correoElectronico"
-                      value={formData.correoElectronico}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="contacto" className="block text-sm font-medium text-gray-300 mb-1">Contacto *</label>
-                    <input
-                      type="number"
-                      id="contacto"
-                      name="contacto"
-                      value={formData.contacto}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="direccion" className="block text-sm font-medium text-gray-300 mb-1">Direccion *</label>
-                    <input
-                      type="text"
-                      id="direccion"
-                      name="direccion"
-                      value={formData.direccion}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
-                      required
-                    />
-                  </div>
-
-
-                  <div className="mb-4">
-                    <label htmlFor="comuna" className="block text-sm font-medium text-gray-300 mb-1">Comuna</label>
+      {/* Modal de Centro (Crear/Editar) */}
+      {(modalCentro) && (
+        <div className="fixed inset-0 bg-gray-600/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-darkL rounded-lg shadow-2xl w-full max-w-md border border-gray-700">
+            <form onSubmit={handleSubmitCentro}>
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    {modalCentro === 'new' ? 'Nuevo Centro' : 'Editar Centro'}
+                  </h2>
+                  <button type="button" onClick={cerrarModalCentro} className="text-gray-400 hover:text-gray-300 p-1 rounded-full hover:bg-gray-700">
+                    <X size={20} />
+                  </button>
+                </div>
+                {formError && <div className="text-red-400 text-sm mb-2">{formError}</div>}
+                
+                {/* *** INICIO DE LA CORRECCIÓN *** */}
+                {/* Selector de Empresa (Req 4) o Texto Fijo (Req 5 / Editar) */}
+                <div className="mb-4">
+                  <label htmlFor="centroEmpresa" className="block text-sm font-medium text-gray-300 mb-1">Empresa *</label>
+                  {isCentroGlobalAdd ? (
+                    // Flujo 1: (Botón Global) Muestra el dropdown
                     <select
-                      id="comuna"
-                      name="idComuna"
-                      value={formData.idComuna}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark focus:border-red-dark"
+                      id="centroEmpresa"
+                      value={formCentroCompanyId || ''}
+                      onChange={(e) => setFormCentroCompanyId(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark"
                     >
-                      {comunas.map((comuna) => (
-                        <option key={comuna.id} value={comuna.id}>
-                          {comuna.nombre}
-                        </option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
-                  </div>
+                  ) : (
+                    // Flujo 2 o 3: (Botón Fila o Editar) Muestra texto fijo
+                    <p className="text-white font-semibold p-2 bg-gray-dark rounded-md">
+                      {companies.find(c => c.id === formCentroCompanyId)?.name || '...'}
+                    </p>
+                  )}
+                </div>
+                {/* *** FIN DE LA CORRECCIÓN *** */}
 
-                  <div className="flex justify-end space-x-3 pt-4 border-t border-gray-700">
-                    <button
-                      type="button"
-                      onClick={() => setModalAbierto(false)}
-                      className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-red-dark rounded-md text-white hover:bg-red-dark/90 transition-colors"
-                    >
-                      {modalEdicion ? 'Actualizar' : 'Guardar'}
-                    </button>
-                  </div>
-                </form>
+                <div className="mb-4">
+                  <label htmlFor="centroName" className="block text-sm font-medium text-gray-300 mb-1">Nombre del Centro *</label>
+                  <input
+                    type="text"
+                    id="centroName"
+                    value={formCentroName}
+                    onChange={(e) => setFormCentroName(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-dark border border-gray-700 rounded-md text-gray-100 focus:outline-none focus:ring-1 focus:ring-red-dark"
+                    required autoFocus
+                  />
+                </div>
               </div>
-            </div>
+              <div className="flex justify-end space-x-3 p-4 bg-gray-darkL/50 border-t border-gray-700 rounded-b-lg">
+                <button type="button" onClick={cerrarModalCentro} className="px-4 py-2 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-red-dark rounded-md text-white hover:bg-red-dark/90">Guardar</button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

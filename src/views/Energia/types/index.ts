@@ -102,3 +102,16 @@ export interface DeviceSummary {
   dailyConsumption: number;
   alerts: DeviceAlert[];
 }
+
+export interface DailyConsumptionPoint {
+  date: string;       // Formato "DD-MM"
+  consumption: number;  // Consumo en kWh
+}
+
+/** La respuesta completa para la vista de detalles. */
+export interface DeviceDetailsResponse {
+  deviceInfo: DeviceInfo; // Ya deberías tener este tipo
+  dailyConsumption: DailyConsumptionPoint[];
+  totalConsumption: number;
+  avgDailyConsumption: number;
+}

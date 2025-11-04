@@ -1,58 +1,81 @@
-import { useState } from "react";
-import { Bar, Line } from 'react-chartjs-2';
+// components/SummaryView.tsx
+import { Line } from 'react-chartjs-2'; 
 import { Card } from "./Card";
 import { ConsumptionGauge } from "./ConsumptionGauge";
 import { DeviceSummary } from "../types";
 
-// Tipamos las props que recibe
+// 1. Props actualizadas (sin onTimeRangeChange)
 interface SummaryViewProps {
   device: DeviceSummary;
   index: number;
   onViewDetails: () => void;
   currentTimeRange: string;
-  onTimeRangeChange: (newRange: string) => void;
 }
-export function SummaryView({ device, index, onViewDetails, currentTimeRange, onTimeRangeChange }: SummaryViewProps) {
+
+// 2. Firma de la función actualizada
+export function SummaryView({
+  device,
+  index,
+  onViewDetails,
+  currentTimeRange
+}: SummaryViewProps) {
   
-  const [activeVariable, setActiveVariable] = useState('consumption');
-  console.log(device.object.phaseC_activePower);
   const colors = ['blue', 'green', 'purple', 'yellow', 'red'];
   const currentColor = colors[index % colors.length];
-  /* Logica para el color activo */
-  // Convertir el string ISO de la DB a un objeto Date
+  
   const lastDataTime = new Date(device.time);
   const now = new Date();
   const minutesAgo = (now.getTime() - lastDataTime.getTime()) / (1000 * 60);
-  const isActive = minutesAgo < 5; // Activo si es < 5 minutos
+  const isActive = minutesAgo < 5;
   
-  // --- MODIFICACIÓN: Cambiar el formato de la fecha ---
   const formattedTime = lastDataTime.toLocaleString('es-CL', {
-    year: 'numeric',   // YYYY
-    month: '2-digit',  // MM
-    day: '2-digit',    // DD
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
+    timeZone: 'America/Santiago'
   }).replace(',', '');
 
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index' as const, 
+      intersect: false, 
+    },
     plugins: {
       legend: {
         position: 'top' as const,
-        labels: { color: '#ccc', font: { size: 9 } }
+        labels: { 
+          color: '#ccc', 
+          font: { size: 11 }
+        }
       },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+      }
     },
     scales: {
       x: {
-        grid: { color: '#374151' },
-        ticks: { color: '#9CA3AF', font: { size: 8 }, maxRotation: 45 }
+        grid: { 
+          display: false 
+        },
+        ticks: { 
+          color: '#9CA3AF', 
+          font: { size: 10 },
+          maxTicksLimit: 8
+        }
       },
       y: {
         grid: { color: '#374151' },
-        ticks: { color: '#9CA3AF', font: { size: 8 } }
+        ticks: { 
+          color: '#9CA3AF', 
+          font: { size: 10 } 
+        }
       }
     }
   };
@@ -60,141 +83,111 @@ export function SummaryView({ device, index, onViewDetails, currentTimeRange, on
   const availableVariables = [
     { id: 'consumption', label: 'Consumo', unit: 'kW', color: 'rgb(34, 197, 94)' },
     { id: 'voltage', label: 'Voltaje', unit: 'V', color: 'rgb(59, 130, 246)' },
-    { id: 'current', label: 'Corriente', unit: 'A', color: 'rgb(239, 68, 68)' }
+    { id: 'current', label: 'Corriente', unit: 'A', color: 'rgb(239, 68, 68)' },
+    { id: 'power', label: 'Potencia', unit: 'kW', color: 'rgb(234, 179, 8)' }
   ];
 
-  const tripleColumnData = {
-    labels: ['Fase A', 'Fase B', 'Fase C'],
-    datasets: [
-      {
-        label: 'Voltaje (V)',
-        data: [
-          device.object.phaseA_voltage,
-          device.object.phaseB_voltage,
-          device.object.phaseC_voltage
-        ],
-        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        borderColor: 'rgb(59, 130, 246)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Corriente (A)',
-        data: [
-          device.object.phaseA_current,
-          device.object.phaseB_current,
-          device.object.phaseC_current
-        ],
-        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-        borderColor: 'rgb(239, 68, 68)',
-        borderWidth: 1,
-      },
-      {
-        label: 'Potencia (kW)',
-        data: [
-          device.object.phaseA_activePower,
-          device.object.phaseB_activePower,
-          device.object.phaseC_activePower
-        ],
-        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-        borderColor: 'rgb(34, 197, 94)',
-        borderWidth: 1,
-      }
-    ]
-  };
+  type VariableId = 'consumption' | 'voltage' | 'current' | 'power';
 
-  const getHistoricalChartData = () => {
-    // --- MODIFICADO: Usar el prop para decidir qué data mostrar ---
-    const data = (currentTimeRange === "monthly_mock") // Usamos una clave "ficticia" para el mock
+  // 3. Función getHistoricalChartData COMPLETA (aquí estaba tu error)
+  const getHistoricalChartData = (variableIds: VariableId[]) => {
+    const data = (currentTimeRange === "monthly_mock")
       ? device.historicalData.monthly
-      : device.historicalData.daily; // 'daily' ahora contiene 1d, 7d, 14d, o 30d
+      : device.historicalData.daily;
     
-    // El resto de esta función es igual...
-    const labels = data.consumption.map(d => d.time);
-    const selectedData = data[activeVariable];
-    const variableConfig = availableVariables.find(v => v.id === activeVariable);
+    // Usamos 'consumption' como referencia para las etiquetas (labels)
+    const labels = data.consumption.map(d => d.time); 
     
+    // Esta era la línea que faltaba o estaba incompleta
+    const datasets = variableIds.map(id => {
+        const selectedData = data[id as keyof typeof data]; 
+        const variableConfig = availableVariables.find(v => v.id === id);
+
+        if (!selectedData) {
+            console.warn(`No historical data found for variable: ${id}`);
+            return null;
+        }
+
+        return {
+            label: `${variableConfig?.label} (${variableConfig?.unit})`,
+            data: selectedData.map(d => d.value),
+            borderColor: variableConfig?.color,
+            backgroundColor: variableConfig?.color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+            borderWidth: 1.5,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: variableConfig?.color
+        };
+    }).filter(Boolean); // <-- Importante
+
     return {
       labels,
-      datasets: [{
-        label: `${variableConfig?.label} (${variableConfig?.unit})`,
-        data: selectedData.map(d => d.value),
-        borderColor: variableConfig?.color,
-        backgroundColor: variableConfig?.color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4
-      }]
+      datasets: datasets as any[] // Ahora 'datasets' sí está definido
     };
   };
 
-  // ... (El resto de tu JSX de SummaryView va aquí, sin cambios)
+  // 4. JSX actualizado SIN los <select>
   return (
      <div className="h-full flex flex-col gap-1">
-       {/* Header compacto con botón de detalles */}
+       {/* Header */}
        <Card className="h-16">
-        <div className="p-2 h-full">
-          
-          {/* Este 'div' es el contenedor principal del header */}
-          <div className="flex items-center justify-between h-full">
-            
-            {/* GRUPO IZQUIERDA: Indicador y Nombre */}
-            <div className="flex items-center gap-3">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full ${
-                isActive 
-                ? 'bg-green-500 animate-pulse' // Activo
-                : 'bg-gray-600' // Inactivo
-              }`}>
-              </div>
-              <h3 className="text-sm font-semibold text-white">{device.deviceInfo.deviceName}</h3>
-            </div>
-            
-            {/* GRUPO MEDIO: La fecha */}
-            <div>
-              <p className="text-sm text-gray-300">
-                Últ. dato: {formattedTime}
-              </p>
-            </div>
-            
-            {/* GRUPO DERECHA: El botón */}
-            <button 
-              onClick={onViewDetails}
-              className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
-            >
-              Ver Detalles
-            </button>
-          </div>
-        </div>
-      </Card>
+         <div className="p-2 h-full">
+           <div className="flex items-center justify-between h-full">
+             <div className="flex items-center gap-3">
+               <div className={`flex-shrink-0 w-8 h-8 rounded-full ${
+                 isActive 
+                 ? 'bg-green-500 animate-pulse' // Activo
+                 : 'bg-gray-600' // Inactivo
+               }`}>
+               </div>
+               <h3 className="text-sm font-semibold text-white">{device.deviceInfo.deviceName}</h3>
+             </div>
+             <div>
+               <p className="text-sm text-gray-300">
+                 Últ. dato: {formattedTime}
+               </p>
+             </div>
+             <button 
+               onClick={onViewDetails}
+               className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+             >
+               Ver Detalles
+             </button>
+           </div>
+         </div>
+       </Card>
 
-       {/* Gauges de Consumo */}
+       {/* Gauges */}
        <Card className="h-32">
          <div className="p-2 h-full">
            <div className="flex justify-between items-center h-full">
              <ConsumptionGauge 
-               value={device.object.agg_activePower}
-               max={100}
-               label="Total"
+               value={device.object.agg_activeEnergy / 1000}
+               max={100} 
+               label="Total Diario (kWh)"
                size="medium"
-               color={currentColor}
-             />
-             <ConsumptionGauge 
-               value={device.object.phaseA_activePower}
-               max={50}
-               label="Fase A"
-               size="small"
-               color="green"
-             />
-             <ConsumptionGauge 
-               value={device.object.phaseB_activePower}
-               max={50}
-               label="Fase B" 
-               size="small"
                color="yellow"
              />
              <ConsumptionGauge 
-               value={device.object.phaseC_activePower}
-               max={50}
-               label="Fase C"
+               value={device.object.phaseA_activeEnergy / 1000}
+               max={50} 
+               label="Fase A (kWh)"
+               size="small"
+               color="purple"
+             />
+             <ConsumptionGauge 
+               value={device.object.phaseB_activeEnergy / 1000}
+               max={50} 
+               label="Fase B (kWh)" 
+               size="small"
+               color="purple"
+             />
+             <ConsumptionGauge 
+               value={device.object.phaseC_activeEnergy / 1000}
+               max={50} 
+               label="Fase C (kWh)"
                size="small"
                color="purple"
              />
@@ -226,77 +219,33 @@ export function SummaryView({ device, index, onViewDetails, currentTimeRange, on
          </div>
        </Card>
 
-       {/* Distribución por Fases */}
-       <Card className="h-48">
+       {/* Historial (Voltaje y Potencia) */}
+       <Card className="h-60">
          <div className="p-2 h-full flex flex-col">
-           <h4 className="text-xs font-medium text-white mb-2">Distribución por Fases</h4>
+           <div className="flex justify-between items-center mb-2">
+             <h4 className="text-xs font-medium text-white">Historial (Voltaje y Potencia)</h4>
+             {/* SELECT ELIMINADO DE AQUÍ */}
+           </div>
            <div className="flex-1">
-             <Bar 
-               data={tripleColumnData} 
-               options={chartOptions} 
+             <Line 
+               data={getHistoricalChartData(['voltage', 'power'])} 
+               options={chartOptions}
              />
            </div>
          </div>
        </Card>
 
-       {/* Calidad de Energía */}
-       <Card className="h-24">
-         <div className="p-2 h-full">
-           <h4 className="text-xs font-medium text-white mb-1">Calidad de Energía</h4>
-           <div className="grid grid-cols-3 gap-1 text-xs">
-             <div className="text-center">
-               <div className="text-gray-400">THD A</div>
-               <div className="text-yellow-400 font-medium">{device.object.phaseA_thdI.toFixed(1)}%</div>
-             </div>
-             <div className="text-center">
-               <div className="text-gray-400">THD B</div>
-               <div className="text-yellow-400 font-medium">{device.object.phaseB_thdI.toFixed(1)}%</div>
-             </div>
-             <div className="text-center">
-               <div className="text-gray-400">THD C</div>
-               <div className="text-yellow-400 font-medium">{device.object.phaseC_thdI.toFixed(1)}%</div>
-             </div>
-           </div>
-         </div>
-       </Card>
-
-       {/* Historial */}
-       <Card className="h-52">
+       {/* Historial de Consumo */}
+       <Card className="h-64">
          <div className="p-2 h-full flex flex-col">
            <div className="flex justify-between items-center mb-2">
-             <h4 className="text-xs font-medium text-white">Historial</h4>
-             <select 
-              value={currentTimeRange}
-              onChange={(e) => onTimeRangeChange(e.target.value)}
-              className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white"
-            >
-              <option value="1d">1 Día</option>
-              <option value="7d">1 Semana</option>
-              <option value="14d">2 Semanas</option>
-              <option value="30d">1 Mes</option>
-              {/* Esta opción usará el dato simulado mensual que dejamos */}
-              <option value="monthly_mock">Mes (Simulado)</option> 
-            </select>
-           </div>
-           <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
-             {availableVariables.map(variable => (
-               <button
-                 key={variable.id}
-                 onClick={() => setActiveVariable(variable.id)}
-                 className={`flex-shrink-0 text-xs px-3 py-1 rounded whitespace-nowrap ${
-                   activeVariable === variable.id 
-                     ? 'bg-blue-500 text-white' 
-                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                 }`}
-               >
-                 {variable.label}
-               </button>
-             ))}
+             <h4 className="text-xs font-medium text-white">Historial de Consumo (kW)</h4>
+             {/* SELECT ELIMINADO DE AQUÍ */}
            </div>
            <div className="flex-1">
              <Line 
-               data={getHistoricalChartData()} 
-               options={chartOptions} 
+               data={getHistoricalChartData(['consumption'])} 
+               options={chartOptions}
              />
            </div>
          </div>

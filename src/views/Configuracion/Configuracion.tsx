@@ -10,10 +10,10 @@ export const Configuracion = () => {
     );
   };
   return (
-    <div className="w-full h-screen p-2 bg-gray-dark">
-      <div className="h-full rounded-lg bg-gray-darkL border border-gray-700 relative overflow-hidden">
+    <div className="w-full h-screen p-2 bg-dark-osc">
+      <div className="h-full bg-gray-dark border border-gray-700/40 relative overflow-hidden">
         {/* Título */}
-        <div className="p-6 border-b border-gray-700">
+        <div className="p-6 border-b border-gray-700/40">
           <h1 className="text-2xl font-bold text-white">
             Configuración del sistema{" "}
             <span className="text-red-dark">WISENSOR</span>
@@ -27,7 +27,7 @@ export const Configuracion = () => {
           {/* Tarjeta Empresas */}
           
             <Link to="/configuracion/empresas" className="group">
-              <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
+              <div className="h-full border border-gray-700/40 bg-dark-osc p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-dark-osc/70 hover:shadow-lg">
                 <div className="flex flex-col h-full">
                   <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-red-dark transition-colors">
                     Empresas
@@ -49,33 +49,15 @@ export const Configuracion = () => {
 
           {/* Tarjeta Centros */}
           
-          <Link to="/configuracion/centros" className="group">
-            <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
-              <div className="flex flex-col h-full">
-                <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-red-dark transition-colors">
-                  Centros
-                </h3>
-                <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-600 to-transparent mb-3"></div>
-                <p className="text-gray-400 text-sm flex-1">
-                  Gestión de centros operativos
-                </p>
-                <div className="mt-4 text-red-dark font-medium flex items-center group-hover:translate-x-1 transition-transform">
-                  Acceder
-                  <span className="ml-2 group-hover:translate-x-1 transition-transform">
-                    →
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
+          
           
 
           {/* Tarjeta Usuarios */}
           
 
-          
+          {hasRole(1, 'admin') && (
           <Link to="/configuracion/usuarios" className="group">
-            <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
+            <div className="h-full border border-gray-700/40 bg-dark-osc p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-dark-osc/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
                 <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-red-dark transition-colors">
                   Usuarios
@@ -93,19 +75,17 @@ export const Configuracion = () => {
               </div>
             </div>
           </Link>
-          
-
-          {/* Tarjeta Roles y permisos */}
-          
-          <Link to="/configuracion/roles-permisos" className="group">
-            <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
+          )}
+          {hasRole(1, 'admin') && (
+          <Link to="/configuracion/sensores" className="group">
+            <div className="h-full border border-gray-700/40 bg-dark-osc p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-dark-osc/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
                 <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-red-dark transition-colors">
-                  Roles y permisos
+                  Sensores
                 </h3>
                 <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-600 to-transparent mb-3"></div>
                 <p className="text-gray-400 text-sm flex-1">
-                  Control de accesos y privilegios
+                  Administración de sensores del sistema
                 </p>
                 <div className="mt-4 text-red-dark font-medium flex items-center group-hover:translate-x-1 transition-transform">
                   Acceder
@@ -116,19 +96,17 @@ export const Configuracion = () => {
               </div>
             </div>
           </Link>
-          
-
-          {/* Tarjeta Inventario */}
+          )}
           {hasRole(1, 'admin') && (
-          <Link to="/configuracion/inventario" className="group">
-            <div className="h-full rounded-lg border border-gray-700 bg-gray-dark p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-gray-dark/70 hover:shadow-lg">
+          <Link to="/configuracion/estadisticas" className="group">
+            <div className="h-full border border-gray-700/40 bg-dark-osc p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-dark-osc/70 hover:shadow-lg">
               <div className="flex flex-col h-full">
                 <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-red-dark transition-colors">
-                  Inventario
+                  Estadísticas
                 </h3>
                 <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-600 to-transparent mb-3"></div>
                 <p className="text-gray-400 text-sm flex-1">
-                  Gestión de equipos y dispositivos
+                  Administración de estadísticas del sistema
                 </p>
                 <div className="mt-4 text-red-dark font-medium flex items-center group-hover:translate-x-1 transition-transform">
                   Acceder

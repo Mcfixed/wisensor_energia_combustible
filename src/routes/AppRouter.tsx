@@ -11,6 +11,8 @@ import Configuracion from '../views/Configuracion/Configuracion';
 import { Empresas } from '../views/Configuracion/sections/Empresas';
 import { Usuarios } from '../views/Configuracion/sections/Usuarios';
 import { RolesPermisos } from '../views/Configuracion/sections/RolesPermisos';
+import { Sensores } from '../views/Configuracion/sections/Sensores';
+import { Estadisticas } from '../views/Estadisticas/Estadisticas';
 
 const AppRouter = () => {
   return (
@@ -33,6 +35,8 @@ const AppRouter = () => {
         <Route path="/configuracion/empresas" element={<Empresas />} />
         <Route path="/configuracion/usuarios" element={<Usuarios />} />
         <Route path="/configuracion/roles-permisos" element={<RolesPermisos />} />
+        <Route path="/configuracion/sensores" element={<Sensores />} />
+        <Route path="/configuracion/estadisticas" element={<Estadisticas />} />
       </Route>
     </Routes>
   );
