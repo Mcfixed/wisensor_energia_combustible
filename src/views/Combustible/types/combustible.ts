@@ -1,8 +1,6 @@
-// types/DashboardCombustible.ts
-
 import { ReactNode } from 'react';
 
-// Componentes base
+
 export interface CardProps {
   children: ReactNode;
   className?: string;
@@ -13,7 +11,7 @@ export interface StatusDefaultProps {
   text: string;
 }
 
-// Entidades del dominio
+
 export interface CentroCultivo {
   id: number;
   nombre: string;
@@ -69,7 +67,7 @@ export interface Reabastecimiento {
   numeroFactura: string;
 }
 
-// Props para componentes
+
 export interface IndicadorNivelProps {
   nivel: number;
   capacidad: number;
@@ -101,7 +99,7 @@ export interface MapaCentrosProps {
   onCentroClick?: (centro: CentroCultivo) => void;
 }
 
-// Estado del dashboard
+
 export interface DashboardState {
   centros: CentroCultivo[];
   tanques: TanqueCombustible[];
@@ -113,7 +111,6 @@ export interface DashboardState {
   centroFiltro?: number;
 }
 
-// Configuración
 export interface ConfiguracionDashboard {
   umbralNivelBajo: number;
   umbralNivelCritico: number;

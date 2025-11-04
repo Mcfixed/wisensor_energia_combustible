@@ -1,5 +1,4 @@
-// src/views/combustible/components/FuelFilterBar.tsx
-import React from 'react';
+
 import { Search, RefreshCw } from 'lucide-react';
 import { Card } from './Card';
 import { TimeRange } from '../types';

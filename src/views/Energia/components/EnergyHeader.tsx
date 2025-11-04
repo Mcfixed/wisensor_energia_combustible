@@ -1,9 +1,7 @@
-// components/EnergyHeader.tsx
 import { Clock, Eye, EyeOff, Zap, Power, Battery } from 'lucide-react';
 import { Card } from './Card';
 import { DeviceSummary } from '../types';
 
-// 1. Añadimos las nuevas props
 interface EnergyHeaderProps {
   devices: DeviceSummary[];
   showSensitive: boolean;
@@ -67,7 +65,7 @@ export function EnergyHeader({
           
           <div className="flex items-center gap-4">
             
-            {/* 2. Aquí está el SELECT GLOBAL */}
+            
             <select 
   value={timeRange}
   onChange={(e) => onTimeRangeChange(e.target.value)}

@@ -2,20 +2,18 @@
 import { ArrowLeft, BarChart, TrendingUp, Zap } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { DeviceSummary } from '../types';
-import { useEnergyDetails } from '../hooks/useEnergyDetails'; // <-- Tu nuevo hook
-import { Card } from './Card'; // Asumo que tienes este componente
+import { useEnergyDetails } from '../hooks/useEnergyDetails';
+import { Card } from './Card'; 
 
 interface DetailedViewProps {
-  device: DeviceSummary; // Recibe la info básica del dispositivo
-  onBack: () => void;     // Función para volver atrás
+  device: DeviceSummary; 
+  onBack: () => void;    
 }
 
 export function DetailedView({ device, onBack }: DetailedViewProps) {
   
-  // 1. Usamos el hook para cargar los datos detallados
   const { data, loading, error } = useEnergyDetails(device.deviceInfo.devEui);
 
-  // 2. Opciones para el gráfico de barras
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -46,7 +44,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
     }
   };
 
-  // 3. Preparamos los datos del gráfico
   const chartData = {
     labels: data?.dailyConsumption.map(d => d.date) || [],
     datasets: [
@@ -60,7 +57,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
     ],
   };
 
-  // 4. Función para renderizar el contenido
   const renderContent = () => {
     if (loading) {
       return (
@@ -84,10 +80,8 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
       );
     }
 
-    // --- Contenido cuando SÍ hay datos ---
     return (
       <>
-        {/* Fila de Resumen */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Card className="h-24">
             <div className="p-4 flex items-center gap-4">
@@ -139,7 +133,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
     );
   };
 
-  // 5. Renderizado principal del componente
   return (
     <div className="p-2 flex flex-col gap-2 h-screen">
       {/* Header de la Vista Detallada */}

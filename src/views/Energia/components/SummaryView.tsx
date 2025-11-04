@@ -4,7 +4,6 @@ import { Card } from "./Card";
 import { ConsumptionGauge } from "./ConsumptionGauge";
 import { DeviceSummary } from "../types";
 
-// 1. Props actualizadas (sin onTimeRangeChange)
 interface SummaryViewProps {
   device: DeviceSummary;
   index: number;
@@ -12,7 +11,6 @@ interface SummaryViewProps {
   currentTimeRange: string;
 }
 
-// 2. Firma de la función actualizada
 export function SummaryView({
   device,
   index,
@@ -120,15 +118,14 @@ export function SummaryView({
             pointHoverRadius: 5,
             pointHoverBackgroundColor: variableConfig?.color
         };
-    }).filter(Boolean); // <-- Importante
+    }).filter(Boolean); 
 
     return {
       labels,
-      datasets: datasets as any[] // Ahora 'datasets' sí está definido
+      datasets: datasets as any[] 
     };
   };
 
-  // 4. JSX actualizado SIN los <select>
   return (
      <div className="h-full flex flex-col gap-1">
        {/* Header */}
@@ -138,8 +135,8 @@ export function SummaryView({
              <div className="flex items-center gap-3">
                <div className={`flex-shrink-0 w-8 h-8 rounded-full ${
                  isActive 
-                 ? 'bg-green-500 animate-pulse' // Activo
-                 : 'bg-gray-600' // Inactivo
+                 ? 'bg-green-500 animate-pulse' 
+                 : 'bg-gray-600' 
                }`}>
                </div>
                <h3 className="text-sm font-semibold text-white">{device.deviceInfo.deviceName}</h3>
@@ -224,7 +221,6 @@ export function SummaryView({
          <div className="p-2 h-full flex flex-col">
            <div className="flex justify-between items-center mb-2">
              <h4 className="text-xs font-medium text-white">Historial (Voltaje y Potencia)</h4>
-             {/* SELECT ELIMINADO DE AQUÍ */}
            </div>
            <div className="flex-1">
              <Line 
@@ -240,7 +236,6 @@ export function SummaryView({
          <div className="p-2 h-full flex flex-col">
            <div className="flex justify-between items-center mb-2">
              <h4 className="text-xs font-medium text-white">Historial de Consumo (kW)</h4>
-             {/* SELECT ELIMINADO DE AQUÍ */}
            </div>
            <div className="flex-1">
              <Line 

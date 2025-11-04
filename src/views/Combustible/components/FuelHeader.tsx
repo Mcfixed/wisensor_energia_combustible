@@ -1,5 +1,3 @@
-// src/views/combustible/components/FuelHeader.tsx
-import React from 'react';
 import { Fuel, Droplets, Gauge, Grid3X3, BarChart3 } from 'lucide-react';
 import { Card } from './Card';
 import { FuelSummary } from '../types';

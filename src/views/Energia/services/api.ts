@@ -6,7 +6,6 @@ const apiClient = axios.create({
   baseURL: API_URL,
 });
 
-// Interceptor para añadir el token a CADA petición
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');

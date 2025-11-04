@@ -1,18 +1,15 @@
-// src/views/login/Login.tsx
 import { ArrowBigRightDash, LogIn, Mail, Lock } from "lucide-react";
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext"; // <-- Solo importamos el hook
+import { useAuth } from "../../contexts/AuthContext"; 
 import Version from "../../components/Version";
 import { useNavigate } from "react-router-dom"; 
 
 export const Login = () => {
-  // --- ESTADO (El hook de Auth y estado local) ---
-  const { login } = useAuth(); // <-- Obtenemos la función 'login' del contexto
+  const { login } = useAuth(); 
   const navigate = useNavigate(); 
   const [error, setError] = useState<string | null>(null); 
   const [isLoading, setIsLoading] = useState(false); 
 
-  // --- LÓGICA DE LOGIN (LIMPIA) ---
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -22,20 +19,16 @@ export const Login = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      // El contexto ahora hace todo el trabajo
       await login(email, password);
-      // Si login() no lanza error, redirigimos
       navigate('/');
 
     } catch (err: any) {
-      // Si login() lanza un error, lo mostramos
       setError(err.message || "Ocurrió un error desconocido.");
     } finally {
       setIsLoading(false); 
     }
   };
 
-  // --- TU JSX (EXACTAMENTE COMO LO TENÍAS) ---
   return (
     <div className="flex h-screen bg-gray-darkL text-white">
       {/* Panel izquierdo con imagen (solo en pantallas grandes) */}
@@ -63,10 +56,8 @@ export const Login = () => {
         </div>
       </div>
 
-      {/* Panel derecho con formulario */}
       <div className="relative flex flex-1 items-center justify-center p-6 overflow-hidden">
         <div className="relative w-full max-w-md">
-          {/* Encabezado */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-4 rounded-3xl bg-gradient-to-r from-transparent via-red-400/5 to-transparent filter blur-sm"></div>
           </div>
@@ -98,7 +89,6 @@ export const Login = () => {
             className="space-y-6 bg-gray-darkL border border-gray-700 rounded-2xl p-8 shadow-lg"
             onSubmit={handleLogin}
           >
-            {/* --- MENSAJE DE ERROR --- */}
             {error && (
               <div className="p-3 text-center text-sm text-red-400 bg-red-900/30 border border-red-700 rounded-lg">
                 {error}
@@ -152,7 +142,7 @@ export const Login = () => {
             {/* --- BOTÓN --- */}
             <button
               type="submit"
-              disabled={isLoading} // Deshabilitado mientras carga
+              disabled={isLoading} 
               className="w-full bg-red-dark/80 hover:bg-red-dark text-white font-medium py-3 rounded-lg transition duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
             >
               <LogIn className="h-5 w-5" />

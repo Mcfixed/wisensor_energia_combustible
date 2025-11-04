@@ -166,12 +166,10 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
   sensor, history, loading, onBack, onRangeChange, timeRange
 }) => {
 
-  // Procesamos los datos de Mongo para las tablas y gráficos
   const processedData = useMemo(() => {
     const tableData: { key: string, value: any }[] = [];
     const chartData: ChartData[] = [];
     
-    // 1. Usar el *último* registro para la tabla de valores
     const latestRecord = history[history.length - 1];
     if (latestRecord && latestRecord.object) {
       Object.entries(latestRecord.object).forEach(([key, value]) => {
@@ -180,7 +178,6 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
       });
     }
 
-    // 2. Usar *todos* los registros para los gráficos
     history.forEach(record => {
       const time = formatChartDate(record.time);
       const values = record.object || {};
@@ -190,7 +187,6 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
     return { tableData, chartData };
   }, [history]);
 
-  // Define qué gráficos mostrar según el tipo de sensor
   const getChartsByType = (type: DeviceType) => {
     if (type === DeviceType.COMBUSTIBLE) {
       return (
@@ -214,9 +210,7 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
   };
 
   return (
-    // --- MODIFICADO: 'h-full' cambiado por 'h-screen' ---
     <div className="p-4 h-screen flex flex-col">
-      {/* Header del Panel (Sin cambios) */}
       <div className="flex justify-between items-center mb-1 pb-2 border-b border-gray-700">
         <div className="flex items-center space-x-4">
           <button
@@ -232,7 +226,6 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
             </p>
           </div>
         </div>
-        {/* Selector de Rango de Fecha (Sin cambios) */}
         <div className="flex space-x-1 bg-gray-darkL p-1 rounded-lg">
           {['1d', '7d', '30d'].map(range => (
             <button
@@ -255,10 +248,8 @@ const SensorDashboard: React.FC<SensorDashboardProps> = ({
           <Loader2 className="animate-spin mr-2" /> Cargando historial...
         </div>
       ) : (
-        /* --- MODIFICADO: Se añadió 'min-h-0' --- */
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-3 overflow-hidden min-h-0">
           
-          {/* Columna 1: Tabla de Últimos Valores (Se añadió 'min-h-0') */}
           <div className="lg:col-span-1 flex flex-col overflow-hidden bg-gray-dark rounded-lg border border-gray-700 min-h-0">
             <h3 className="text-lg font-semibold text-white p-4 border-b border-gray-700">
               Últimos Valores (Agregados)

@@ -1,11 +1,8 @@
-// Tipo para las props del Card (ya lo tenías)
+
 export interface CardProps {
   children: React.ReactNode;
   className?: string;
 }
-
-// Tipos basados en tu simulación 'generateDeviceData'
-// Esto define el contrato que nuestra API debe cumplir.
 
 interface DeviceInfo {
   deviceName: string;
@@ -15,7 +12,6 @@ interface DeviceInfo {
   deviceProfileName: string;
 }
 
-// Este es el 'object' de tu documento de Mongo
 interface EnergyObject {
   agg_activePower: number;
   phaseA_activePower: number;
@@ -66,7 +62,7 @@ interface EnergyObject {
 }
 
 interface HistoricalDataPoint {
-  time: string; // "1h", "2h" o "Ene", "Feb"
+  time: string;
   value: number;
 }
 
@@ -89,7 +85,6 @@ interface DeviceAlert {
   timestamp: string;
 }
 
-// Este es el tipo principal que usaremos
 export interface DeviceSummary {
   _id: { $oid: string };
   time: string;
@@ -104,13 +99,12 @@ export interface DeviceSummary {
 }
 
 export interface DailyConsumptionPoint {
-  date: string;       // Formato "DD-MM"
-  consumption: number;  // Consumo en kWh
+  date: string;     
+  consumption: number; 
 }
 
-/** La respuesta completa para la vista de detalles. */
 export interface DeviceDetailsResponse {
-  deviceInfo: DeviceInfo; // Ya deberías tener este tipo
+  deviceInfo: DeviceInfo;
   dailyConsumption: DailyConsumptionPoint[];
   totalConsumption: number;
   avgDailyConsumption: number;
