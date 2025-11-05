@@ -28,3 +28,16 @@ export const getEnergyDetails = async (
   );
   return response.data;
 };
+
+export const updateKwhPriceByDevice = async (
+  devEui: string,
+  newPrice: number
+): Promise<{ message: string; new_price: number }> => {
+  
+  const response = await apiClient.put(
+    `/api/energy/price/${devEui}`,
+    { price_kwh: newPrice } // Este es el body (CenterPriceUpdate)
+  );
+  
+  return response.data;
+};

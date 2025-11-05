@@ -1,11 +1,15 @@
 // components/DetailedView.tsx
-import { useState } from 'react';
-import { ArrowLeft, BarChart, TrendingUp, Zap, FileText, DollarSign, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { 
+  ArrowLeft, BarChart, TrendingUp, Zap, FileText, 
+  DollarSign, AlertTriangle, Check, Loader2 
+} from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
-import ChartDataLabels from 'chartjs-plugin-datalabels'; // <-- 1. Importa el plugin localmente
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { DeviceSummary } from '../types';
 import { useEnergyDetails } from '../hooks/useEnergyDetails';
 import { Card } from './Card';
+import { updateKwhPriceByDevice } from '../services/energiaService'; // Asegúrate de importar esto
 
 interface DetailedViewProps {
   device: DeviceSummary; 
@@ -15,7 +19,22 @@ interface DetailedViewProps {
 export function DetailedView({ device, onBack }: DetailedViewProps) {
   
   const { data, loading, error } = useEnergyDetails(device.deviceInfo.devEui);
+  
+  // Estado para el precio editable
+  const [editablePrice, setEditablePrice] = useState<number | null>(null);
+  // Estado para el botón de guardar
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Cuando 'data' (de la API) cargue, seteamos el estado 'editablePrice'
+  useEffect(() => {
+    // Solo seteamos el precio la primera vez que 'data' carga
+    if (data && editablePrice === null) {
+      setEditablePrice(data.price_kwh);
+    }
+  }, [data, editablePrice]);
+
+  // --- Opciones y Datos de Gráficos ---
   const dailyChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -28,7 +47,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
           label: (context: any) => `${context.parsed.y.toFixed(2)} kWh`
         }
       },
-      // 2. Configura el plugin
       datalabels: {
         color: '#9CA3AF',
         anchor: 'end' as const,
@@ -54,7 +72,7 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
   };
   
   const monthlyChartOptions = {
-    ...dailyChartOptions, // Hereda la config de 'datalabels'
+    ...dailyChartOptions,
     scales: {
       ...dailyChartOptions.scales,
       x: {
@@ -85,6 +103,31 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
       borderWidth: 1,
     }],
   };
+  // --- Fin Opciones y Datos de Gráficos ---
+
+  // --- Función para Guardar Precio ---
+  const handleSavePrice = async () => {
+    if (editablePrice === null || editablePrice === data?.price_kwh) return;
+    
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      // Llamamos a la API para guardar
+      const response = await updateKwhPriceByDevice(device.deviceInfo.devEui, editablePrice);
+      
+      // Seteamos el precio con el valor confirmado por la API
+      setEditablePrice(response.new_price);
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (err) {
+      console.error("Error al guardar el precio:", err);
+      // Opcional: revertir el precio al original si falla
+      if (data) setEditablePrice(data.price_kwh); 
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
 
   const renderContent = () => {
@@ -94,14 +137,15 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
     if (error) {
       return <div className="flex items-center justify-center h-64 text-red-400">{error}</div>;
     }
-    if (!data) {
-      return <div className="flex items-center justify-center h-64 text-gray-400">No hay datos disponibles.</div>;
+    if (!data || editablePrice === null) {
+      // Espera a que tanto 'data' como 'editablePrice' estén listos
+      return <div className="flex items-center justify-center h-64 text-gray-400">Cargando datos de precio...</div>;
     }
     
-    // Usa el precio de la API
-    const pricePerKwh = data.price_kwh;
-    const totalCost = data.totalConsumptionLast30Days * pricePerKwh;
-    const avgDailyCost = data.avgDailyConsumption * pricePerKwh;
+    // Usamos el precio del estado local para los cálculos
+    const priceToCalculate = editablePrice; 
+    const totalCost = data.totalConsumptionLast30Days * priceToCalculate;
+    const avgDailyCost = data.avgDailyConsumption * priceToCalculate;
 
     return (
       <>
@@ -114,7 +158,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 Consumo Mensual (Últimos 12 meses)
               </h3>
               <div className="flex-1 min-h-0">
-                {/* 3. Registra el plugin en el componente */}
                 <Bar 
                   options={monthlyChartOptions} 
                   data={monthlyChartData} 
@@ -131,7 +174,6 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 Consumo Diario (Últimos 30 días)
               </h3>
               <div className="flex-1 min-h-0">
-                {/* 3. Registra el plugin en el componente */}
                 <Bar 
                   options={dailyChartOptions} 
                   data={dailyChartData} 
@@ -159,13 +201,39 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
               </div>
             </div>
             
-            {/* Display del Precio */}
+            {/* Input para el Precio (Editable) */}
             <div className="mb-4">
-              <label className="text-sm text-gray-400 block mb-1">
+              <label htmlFor="priceKwh" className="text-sm text-gray-400 block mb-1">
                 Precio por kWh (CLP) - (Configurado en el Centro)
               </label>
-              <div className="text-xl font-bold text-white p-2 bg-gray-700 rounded-lg inline-block">
-                $ {pricePerKwh.toLocaleString('es-CL')}
+              <div className="flex items-center gap-2">
+                <div className="relative max-w-xs">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    id="priceKwh"
+                    value={editablePrice}
+                    onChange={(e) => setEditablePrice(Number(e.target.value) || 0)}
+                    className="w-full pl-7 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors"
+                  />
+                </div>
+                
+                {/* Botón de Guardar */}
+                <button
+                  onClick={handleSavePrice}
+                  disabled={isSaving || saveSuccess || editablePrice === data.price_kwh}
+                  className="px-4 py-2 rounded-lg text-white font-medium transition-colors
+                             bg-blue-600 hover:bg-blue-700
+                             disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : saveSuccess ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    "Guardar"
+                  )}
+                </button>
               </div>
             </div>
 
