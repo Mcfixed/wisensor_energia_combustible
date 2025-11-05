@@ -72,7 +72,7 @@ export function EnergyHeader({
   className="
     w-full max-w-xs
     bg-gradient-to-br from-gray-950/40 to-gray-900/40
-    border-2 border-gray-700/40
+    border-2 border-red-700/40
     rounded
     px-4 py-3
     text-white

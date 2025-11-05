@@ -79,7 +79,7 @@ export function SummaryView({
   };
 
   const availableVariables = [
-    { id: 'consumption', label: 'Consumo', unit: 'kW', color: 'rgb(34, 197, 94)' },
+    { id: 'consumption', label: 'Consumo', unit: 'W', color: 'rgb(34, 197, 94)' },
     { id: 'voltage', label: 'Voltaje', unit: 'V', color: 'rgb(59, 130, 246)' },
     { id: 'current', label: 'Corriente', unit: 'A', color: 'rgb(239, 68, 68)' },
     { id: 'power', label: 'Potencia', unit: 'kW', color: 'rgb(234, 179, 8)' }
@@ -235,7 +235,7 @@ export function SummaryView({
        <Card className="h-64">
          <div className="p-2 h-full flex flex-col">
            <div className="flex justify-between items-center mb-2">
-             <h4 className="text-xs font-medium text-white">Historial de Consumo (kW)</h4>
+             <h4 className="text-xs font-medium text-white">Historial de Consumo (W)</h4>
            </div>
            <div className="flex-1">
              <Line 

@@ -102,10 +102,18 @@ export interface DailyConsumptionPoint {
   date: string;     
   consumption: number; 
 }
+export interface MonthlyConsumptionPoint {
+  date: string;  
+  month_name: string; 
+  consumption: number; 
+}
 
 export interface DeviceDetailsResponse {
   deviceInfo: DeviceInfo;
+  
   dailyConsumption: DailyConsumptionPoint[];
-  totalConsumption: number;
+  totalConsumptionLast30Days: number;
   avgDailyConsumption: number;
+  
+  monthlyConsumption: MonthlyConsumptionPoint[];
 }
