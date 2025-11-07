@@ -30,7 +30,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 }
 
 export const getDeviceDetailsList = (): Promise<DeviceDetails[]> => {
-  return apiFetch<DeviceDetails[]>('/api/devices/details');
+  return apiFetch<DeviceDetails[]>('/devices/details');
 };
 
 export const getDeviceHistory = (
@@ -43,5 +43,5 @@ export const getDeviceHistory = (
     end_date: endDate,
   });
 
-  return apiFetch<MongoHistoryRecord[]>(`/api/devices/${devEui}/history?${params.toString()}`);
+  return apiFetch<MongoHistoryRecord[]>(`/devices/${devEui}/history?${params.toString()}`);
 };

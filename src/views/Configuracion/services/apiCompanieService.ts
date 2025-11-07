@@ -41,18 +41,18 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 // --- API de Compañías ---
 
 export const getCompanies = (): Promise<Company[]> => {
-  return apiFetch<Company[]>('/api/companies');
+  return apiFetch<Company[]>('/companies');
 };
 
 export const createCompany = (data: CompanyCreate): Promise<Company> => {
-  return apiFetch<Company>('/api/companies', {
+  return apiFetch<Company>('/companies', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
 export const updateCompany = (id: number, data: CompanyUpdate): Promise<Company> => {
-  return apiFetch<Company>(`/api/companies/${id}`, {
+  return apiFetch<Company>(`/companies/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });

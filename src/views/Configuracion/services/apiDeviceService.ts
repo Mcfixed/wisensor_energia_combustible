@@ -36,30 +36,30 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 
 export const getCompanies = (): Promise<Company[]> => {
   // Asumimos que este endpoint devuelve Company[]
-  return apiFetch<Company[]>('/api/companies');
+  return apiFetch<Company[]>('/companies');
 };
 
 export const getCentersByCompany = (companyId: number): Promise<Center[]> => {
   // Asumimos que este endpoint devuelve Center[]
-  return apiFetch<Center[]>(`/api/companies/${companyId}/centers`);
+  return apiFetch<Center[]>(`/companies/${companyId}/centers`);
 };
 
 
 // --- API de Dispositivos (Devices) ---
 
 export const getDevicesByCenter = (centerId: number): Promise<Device[]> => {
-  return apiFetch<Device[]>(`/api/devices/by_center/${centerId}`);
+  return apiFetch<Device[]>(`/devices/by_center/${centerId}`);
 };
 
 export const createDevice = (data: DeviceCreate): Promise<Device> => {
-  return apiFetch<Device>('/api/devices', {
+  return apiFetch<Device>('/devices', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 };
 
 export const updateDevice = (id: number, data: DeviceUpdate): Promise<Device> => {
-  return apiFetch<Device>(`/api/devices/${id}`, {
+  return apiFetch<Device>(`/devices/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });

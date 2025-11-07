@@ -24,7 +24,7 @@ export const loginWithCredentials = async (email: string, password: string): Pro
     tokenParams.append('password', password);
 
     const tokenResponse = await axios.post<TokenResponse>(
-      `${apiUrl}/api/token`,
+      `${apiUrl}/token`,
       tokenParams,
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -36,8 +36,8 @@ export const loginWithCredentials = async (email: string, password: string): Pro
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
     const [userResponse, rolesResponse] = await Promise.all([
-      apiClient.get<BaseUser>(`${apiUrl}/api/users/me`),
-      apiClient.get<UserRoleInCompany[]>(`${apiUrl}/api/users/me/roles`)
+      apiClient.get<BaseUser>(`${apiUrl}/users/me`),
+      apiClient.get<UserRoleInCompany[]>(`${apiUrl}/users/me/roles`)
     ]);
 
     return {

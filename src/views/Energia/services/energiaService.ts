@@ -4,7 +4,7 @@ import { DeviceSummary, DeviceDetailsResponse } from '../types/index';
 
 export const getEnergySummary = async (timeRange: string): Promise<DeviceSummary[]> => {
   const response = await apiClient.get<DeviceSummary[]>(
-    '/api/energy/summary',
+    '/energy/summary',
     {
       params: {
         time_range: timeRange
@@ -19,7 +19,7 @@ export const getEnergyDetails = async (
 ): Promise<DeviceDetailsResponse> => {
   
   const response = await apiClient.get<DeviceDetailsResponse>(
-    `/api/energy/details/${devEui}`,
+    `/energy/details/${devEui}`,
     {
       params: {
         days: days 
@@ -35,7 +35,7 @@ export const updateKwhPriceByDevice = async (
 ): Promise<{ message: string; new_price: number }> => {
   
   const response = await apiClient.put(
-    `/api/energy/price/${devEui}`,
+    `/energy/price/${devEui}`,
     { price_kwh: newPrice } // Este es el body (CenterPriceUpdate)
   );
   

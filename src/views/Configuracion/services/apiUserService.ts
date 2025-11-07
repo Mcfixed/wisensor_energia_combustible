@@ -41,18 +41,18 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 // --- Servicios de Usuarios ---
 
 export const getUsuarios = (): Promise<User[]> => {
-  return apiFetch<User[]>('/api/users');
+  return apiFetch<User[]>('/users');
 };
 
 export const createUsuario = (userData: UserCreate): Promise<User> => {
-  return apiFetch<User>('/api/users', {
+  return apiFetch<User>('/users', {
     method: 'POST',
     body: JSON.stringify(userData),
   });
 };
 
 export const updateUsuario = (userId: number, userData: UserUpdate): Promise<User> => {
-  return apiFetch<User>(`/api/users/${userId}`, {
+  return apiFetch<User>(`/users/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify(userData),
   });
@@ -63,7 +63,7 @@ export const updateUsuario = (userId: number, userData: UserUpdate): Promise<Use
  */
 export const deleteUsuario = (userId: number): Promise<User> => {
   const updateData: UserUpdate = { is_active: false };
-  return apiFetch<User>(`/api/users/${userId}`, {
+  return apiFetch<User>(`/users/${userId}`, {
     method: 'DELETE', // Tu endpoint usa DELETE, pero la lógica era de soft-delete
     // Si el endpoint DELETE hace soft-delete, está bien.
     // Si el endpoint DELETE borra de verdad, y quieres soft-delete,
@@ -79,11 +79,11 @@ export const deleteUsuario = (userId: number): Promise<User> => {
 export const getCompanies = (): Promise<Company[]> => {
   // Asumiendo que tienes un endpoint /companies
   // Si tu endpoint es /empresa, cámbialo aquí.
-  return apiFetch<Company[]>('/api/companies');
+  return apiFetch<Company[]>('/companies');
 };
 
 export const assignCompanyToUser = (assignmentData: CompanyAssignment): Promise<any> => {
-  return apiFetch('/api/companies/assign', {
+  return apiFetch('/companies/assign', {
     method: 'POST',
     body: JSON.stringify(assignmentData),
   });
