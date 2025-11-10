@@ -2,18 +2,15 @@ import { useState } from 'react';
 import { Edit, Trash2, Plus, X, Building, MapPin, Loader2 } from 'lucide-react';
 import { useEmpresasYCentros } from '../hooks/useCompanieCenter';
 import { Company, Center } from '../types/EmpresaCenterTypes';
-// Ajusta la ruta a tu hook de permisos
-import { usePermission } from '../../../hooks/rolesypermisos/usePermission'; 
 
 export const Empresas = () => {
   // --- Permisos (Ejemplos) ---
-  const crearEmpresa = usePermission("crear empresas");
-  const crearCentro = usePermission("crear centros");
   const placeholderPermissions = {
     editarEmpresa: true,
     eliminarEmpresa: true,
     editarCentro: true,
     eliminarCentro: true,
+    crearCentro: true,
   };
 
   // --- Hook de Lógica ---

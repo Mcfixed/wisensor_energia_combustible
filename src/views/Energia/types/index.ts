@@ -116,4 +116,13 @@ export interface DeviceDetailsResponse {
   avgDailyConsumption: number;
   
   monthlyConsumption: MonthlyConsumptionPoint[];
+  price_kwh: number;
+}
+// En la parte superior del archivo, define los tipos
+export interface ConsumptionGaugeProps {
+  value: number;
+  max?: number;
+  label: string;
+  size?: "small" | "medium" | "large";
+  color?: "green" | "blue" | "yellow" | "purple" | "red";
 }

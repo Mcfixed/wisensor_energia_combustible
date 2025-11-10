@@ -4,7 +4,6 @@ import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import Layout from '../components/Layout';
 import Login from '../views/login/Login';
-import { Dashboard } from '../views/Dashboard/Dashboard';
 import { Combustible } from '../views/Combustible/Combustible';
 import { Energia } from '../views/Energia/Energia';
 import Configuracion from '../views/Configuracion/Configuracion';

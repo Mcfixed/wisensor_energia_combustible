@@ -1,5 +1,4 @@
 // src/views/combustible/components/CenterCard.tsx
-import React from 'react';
 import { Building } from 'lucide-react';
 import { Center, Tank } from '../types';
 import { StatusIndicator } from './StatusIndicator';

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { 
   Anchor, Fish, Waves, Thermometer, Droplets, 
-  Eye, EyeOff, FileText, MapPin, Globe, 
+  Eye, EyeOff, FileText, MapPin, 
   Calendar, TrendingUp, AlertTriangle, 
-  CheckCircle, XCircle, Clock, Filter,
-  BarChart3, Settings, Database
+  CheckCircle, XCircle, Clock,
+  BarChart3, Settings
 } from 'lucide-react';
-import { CardProps, StatusDefaultProps } from "../../assets/types/Estadisticas";
+import { CardProps, StatusDefaultProps,StatusType } from "../../assets/types/Estadisticas";
 
 function Card({ children, className = "" }: CardProps) {
   return (
@@ -38,11 +38,11 @@ export const AnalisisMarino = () => {
   const [selectedCenter, setSelectedCenter] = useState("Centro Norte");
   
   const centros = [
-    { id: 1, nombre: "Centro Norte", ubicacion: "45°12'34\"S 73°15'22\"W", estado: "optimal" },
-    { id: 2, nombre: "Centro Sur", ubicacion: "46°45'12\"S 74°33'45\"W", estado: "warning" },
-    { id: 3, nombre: "Centro Este", ubicacion: "44°58'15\"S 72°48'33\"W", estado: "optimal" },
-    { id: 4, nombre: "Centro Oeste", ubicacion: "45°33'27\"S 75°12'18\"W", estado: "critical" }
-  ];
+  { id: 1, nombre: "Centro Norte", ubicacion: "45°12'34\"S 73°15'22\"W", estado: "optimal" as StatusType },
+  { id: 2, nombre: "Centro Sur", ubicacion: "46°45'12\"S 74°33'45\"W", estado: "warning" as StatusType },
+  { id: 3, nombre: "Centro Este", ubicacion: "44°58'15\"S 72°48'33\"W", estado: "optimal" as StatusType },
+  { id: 4, nombre: "Centro Oeste", ubicacion: "45°33'27\"S 75°12'18\"W", estado: "critical" as StatusType }
+];
 
   const alertasAmbientales = [
     { id: 1, tipo: "Bajo oxígeno", centro: "Centro Sur", nivel: "warning", tiempo: "15 min ago", parametro: "O₂: 4.2 mg/L" },

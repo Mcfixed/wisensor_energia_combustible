@@ -1,5 +1,5 @@
 // src/views/combustible/components/FuelWidget.tsx
-import React from 'react';
+
 import { Tank } from '../types';
 import { StatusIndicator } from './StatusIndicator';
 

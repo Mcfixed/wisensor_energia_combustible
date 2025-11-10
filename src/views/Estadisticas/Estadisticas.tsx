@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 // Corregido: Asumimos que el hook está en la carpeta central de hooks
 import { useEstadisticas } from './hooks/useDevice';
 // Corregido: Asumimos que los tipos están en tu archivo central de tipos

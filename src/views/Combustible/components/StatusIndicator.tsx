@@ -1,5 +1,4 @@
 // src/views/combustible/components/StatusIndicator.tsx
-import React from 'react';
 import { AlertTriangle, Battery, Droplets, Settings, TrendingDown } from 'lucide-react';
 import { Center } from '../types'; // Usamos el tipo Center
 

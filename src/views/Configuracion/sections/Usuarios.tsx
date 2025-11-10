@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Edit, Trash2, Plus, X, User, Mail, ShieldCheck, ShieldAlert } from 'lucide-react';
-import { User as UserType, Company, UserRole } from '../types/appTypes';
+import { Edit, Trash2, Plus, X, User} from 'lucide-react';
+import { User as UserType, UserRole } from '../types/appTypes';
 import { useUsuarios } from '../hooks/useUsuarios'; 
 
 // Valores iniciales para el formulario

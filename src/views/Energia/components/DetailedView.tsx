@@ -1,7 +1,7 @@
 // components/DetailedView.tsx
 import { useState, useEffect } from 'react';
 import { 
-  ArrowLeft, BarChart, TrendingUp, Zap, FileText, 
+  ArrowLeft, TrendingUp, Zap, FileText, 
   DollarSign, AlertTriangle, Check, Loader2 
 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';

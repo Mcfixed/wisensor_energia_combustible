@@ -1,13 +1,13 @@
-import { House, Settings,  AlertCircle, Fuel, Zap, BatteryCharging } from 'lucide-react';
+import {Settings,  Zap,  } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-
+/* BatteryCharging, Fuel, */
 function Sidebar() {
   const location = useLocation();
   
   const menuItems = [
     { path: "/energia", icon: Zap, label: "Energia" },
-    { path: "/combustible", icon: Fuel, label: "Combustible" },
-    { path: "/monitoreo", icon:BatteryCharging, label: "Sistema" },
+    /* { path: "/combustible", icon: Fuel, label: "Combustible" }, */
+    /* { path: "/monitoreo", icon:BatteryCharging, label: "Sistema" }, */
     { path: "/configuracion", icon: Settings, label: "Configuración" }
   ];
 

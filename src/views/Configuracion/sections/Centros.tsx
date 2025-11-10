@@ -10,7 +10,7 @@ export const Centros = () => {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalEdicion, setModalEdicion] = useState(false);
-  const [modalArtefacto, setModalArtefacto] = useState<string | null>(null);
+  const [_, setModalArtefacto] = useState<string | null>(null);
   const [centroSeleccionado, setCentroSeleccionado] = useState<Centro | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

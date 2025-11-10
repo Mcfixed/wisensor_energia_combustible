@@ -1,10 +1,11 @@
-export type CardProps={
-    children: React.ReactNode; 
-    className?: string; 
-}
-export type StatusType = 'secure' | 'warning' | 'danger' | 'neutral';
+export type StatusType = 'optimal' | 'warning' | 'critical' | 'monitoring';
 
-export type StatusDefaultProps = {
-  status: StatusType;  // En lugar de string
+export interface StatusDefaultProps {
+  status: StatusType;
   text: string;
-};
+}
+
+export interface CardProps {
+  children: React.ReactNode;
+  className?: string;
+}

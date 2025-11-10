@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Edit, Trash2, Plus, X, Building, MapPin, HardDrive, Loader2, ChevronsRight } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Building, MapPin, HardDrive, Loader2 } from 'lucide-react';
 import { useDevices } from '../hooks/useDevice';
-import { Device, Center, DeviceStatus, DeviceType } from '../types/DeviceTypes';
+import { Device, DeviceStatus, DeviceType } from '../types/DeviceTypes';
 
 // --- Componente de Columna ---
 interface ColumnProps {
@@ -68,7 +68,7 @@ export const Sensores = () => {
 
   // --- Handlers de Modal ---
   const abrirModalNuevo = () => {
-    if (!selectedCenterId) return; // No se puede agregar si no hay centro
+    if (!selectedCenterId) return; 
     setFormData({ center_id: selectedCenterId, status: DeviceStatus.ACTIVE, type: DeviceType.ENERGIA });
     setModalDevice(null);
     setModalOpen(true);
@@ -94,7 +94,7 @@ export const Sensores = () => {
           name: formData.name,
           status: formData.status,
           type: formData.type,
-          center_id: formData.center_id // Permitir re-asignar
+          center_id: formData.center_id 
         });
       } else {
         // Creando
@@ -182,8 +182,8 @@ export const Sensores = () => {
               key={device.id}
               label={device.name}
               icon={<HardDrive size={18} className={`mr-3 ${device.status === 'active' ? 'text-green-500' : 'text-gray-500'}`} />}
-              isSelected={false} // No es seleccionable, es el final
-              onClick={() => abrirModalEdicion(device)} // Abrir edición al hacer clic
+              isSelected={false} 
+              onClick={() => abrirModalEdicion(device)} 
             >
               <div className="flex items-center space-x-2">
                 <span className="text-xs text-gray-500 font-mono">{device.dev_eui}</span>
@@ -252,7 +252,7 @@ export const Sensores = () => {
                       required
                       minLength={16}
                       maxLength={16}
-                      disabled={!!modalDevice} // No se puede editar EUI
+                      disabled={!!modalDevice} 
                     />
                   </div>
 
@@ -266,12 +266,9 @@ export const Sensores = () => {
                       required
                     >
                       <option value="" disabled>Selecciona un centro</option>
-                      {/* Idealmente, este dropdown debería mostrar TODOS los centros de TODAS las empresas */}
-                      {/* Por simplicidad, solo muestra los centros de la empresa seleccionada */}
                       {centers.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
-                      {/* Si el centro que se edita no está en la lista, añadirlo */}
                       {modalDevice && !centers.find(c => c.id === modalDevice.center_id) && (
                         <option key={modalDevice.center_id} value={modalDevice.center_id}>
                           Centro (ID: {modalDevice.center_id})
@@ -305,7 +302,7 @@ export const Sensores = () => {
                     >
                       <option value={DeviceStatus.ACTIVE}>Activo</option>
                       <option value={DeviceStatus.INACTIVE}>Inactivo</option>
-                      <option value_={DeviceStatus.MAINTENANCE}>Mantenimiento</option>
+                      <option value={DeviceStatus.MAINTENANCE}>Mantenimiento</option>
                       <option value={DeviceStatus.DO_NOT_DISPLAY}>No Visualizar</option>
                     </select>
                   </div>

@@ -1,4 +1,4 @@
-// Energia.tsx
+// Energia.tsx - Versión corregida
 import { useState } from "react";
 import { useEnergyData } from "./hooks/useEnergyData";
 import { EnergyHeader } from "./components/EnergyHeader";
@@ -33,7 +33,6 @@ export const Energia = () => {
     return (
       <DetailedView 
         device={devices[detailedViewIndex]} 
-        index={detailedViewIndex}
         onBack={() => setDetailedViewIndex(null)}
       />
     );

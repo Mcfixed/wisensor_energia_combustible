@@ -1,23 +1,28 @@
 // src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
-// Importamos el servicio y los nuevos tipos
 import * as authService from '../views/login/services/authService'; 
 import { LoginData } from '../views/login/services/authService';
 
-// (Tus interfaces BaseUser y UserRoleInCompany quedan igual)
-export interface UserRoleInCompany { /* ... */ }
-export interface BaseUser { /* ... */ }
+export interface UserRoleInCompany {
+  company_id: number;
+  role: string;
+}
+export interface BaseUser {
+  id: number;
+  email: string;
+  name: string;
+  roles: string[]; 
+  permisos: string[];
+}
 
-// 1. Actualizamos el Contexto
-interface AuthContextType {
+export interface AuthContextType {
   user: BaseUser | null;
   roles: UserRoleInCompany[];
   isAuthenticated: boolean;
-  // La firma de login cambia: ahora toma credenciales
   login: (email: string, password: string) => Promise<void>; 
   logout: () => void;
   loading: boolean;
-  token: string | null; // El access_token
+  token: string | null; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,11 +31,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<BaseUser | null>(null);
   const [roles, setRoles] = useState<UserRoleInCompany[]>([]);
   const [token, setToken] = useState<string | null>(null);
-  // NOTA: No necesitamos guardar el refresh_token en el ESTADO de React,
-  // porque los componentes nunca lo usan. Solo vive en localStorage.
   const [loading, setLoading] = useState(true);
 
-  // 2. useEffect actualizado para cargar todo desde localStorage
   useEffect(() => {
     setLoading(true);
     const storedToken = localStorage.getItem('access_token');

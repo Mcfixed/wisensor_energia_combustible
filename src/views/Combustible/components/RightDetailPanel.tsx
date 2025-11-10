@@ -1,5 +1,5 @@
 // src/views/combustible/components/RightDetailPanel.tsx
-import React from 'react';
+
 import { Building } from 'lucide-react';
 import { Card } from './Card';
 import { StatusIndicator } from './StatusIndicator';

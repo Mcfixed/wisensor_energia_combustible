@@ -1,5 +1,4 @@
 // src/views/combustible/components/TankWithChart.tsx
-import React from 'react';
 import { Tank, TimeRange } from '../types';
 import { StatusIndicator } from './StatusIndicator';
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getFuelSummary } from '../services/fuelService'; 
-import { Center, Tank, TimeRange, FuelSummary } from '../types';
+import { Center, TimeRange, FuelSummary } from '../types';
 
 export const useFuelData = () => {
   const [centers, setCenters] = useState<Center[]>([]);

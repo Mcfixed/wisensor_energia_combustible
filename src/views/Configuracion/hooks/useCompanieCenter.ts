@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Company, Center, CompanyCreate, CompanyUpdate, CenterCreate, CenterUpdate } from '../types/EmpresaCenterTypes';
+import { Company, CompanyCreate, CompanyUpdate, CenterCreate, CenterUpdate } from '../types/EmpresaCenterTypes';
 // Asumimos que apiService está en la misma carpeta y tiene las funciones
 import * as api from '../services/apiCompanieService'; 
 

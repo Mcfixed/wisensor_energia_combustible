@@ -25,20 +25,17 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   const response = await fetch(`${API_URL}${endpoint}`, config);
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})); // Intenta parsear error
+    const errorData = await response.json().catch(() => ({}));
     const detail = errorData.detail || `Error HTTP: ${response.status} ${response.statusText}`;
     throw new Error(detail);
   }
 
-  // Si el método es DELETE o la respuesta no tiene contenido (204)
   if (response.status === 204 || options.method === 'DELETE') {
-    return null as T; // O un objeto vacío, según prefieras
+    return null as T; 
   }
 
   return response.json() as Promise<T>;
 }
-
-// --- Servicios de Usuarios ---
 
 export const getUsuarios = (): Promise<User[]> => {
   return apiFetch<User[]>('/users');
@@ -58,27 +55,16 @@ export const updateUsuario = (userId: number, userData: UserUpdate): Promise<Use
   });
 };
 
-/**
- * Desactiva un usuario (Soft Delete)
- */
+
 export const deleteUsuario = (userId: number): Promise<User> => {
-  const updateData: UserUpdate = { is_active: false };
   return apiFetch<User>(`/users/${userId}`, {
-    method: 'DELETE', // Tu endpoint usa DELETE, pero la lógica era de soft-delete
-    // Si el endpoint DELETE hace soft-delete, está bien.
-    // Si el endpoint DELETE borra de verdad, y quieres soft-delete,
-    // deberías llamar a updateUsuario(userId, { is_active: false })
+    method: 'DELETE', 
   });
-  // Nota: Tu endpoint DELETE /users/{user_id} hacía un soft-delete.
-  // Es mejor práctica que un DELETE haga delete, y un PATCH haga soft-delete.
-  // Por ahora, sigo tu implementación de endpoint.
 };
 
-// --- Servicios de Compañías ---
 
 export const getCompanies = (): Promise<Company[]> => {
-  // Asumiendo que tienes un endpoint /companies
-  // Si tu endpoint es /empresa, cámbialo aquí.
+
   return apiFetch<Company[]>('/companies');
 };
 

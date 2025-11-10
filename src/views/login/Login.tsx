@@ -45,12 +45,12 @@ export const Login = () => {
               <h2 className="text-3xl font-bold text-white">AST</h2>
               <p className="text-gray-300 mt-1">
                 <span className="text-red-dark font-bold">WI</span>
-                <span className="font-medium">SENSOR ENERGIA Y COMBUSTIBLE</span>
+                <span className="font-medium">SENSOR ENERGIA</span>
                 <span className="text-gray-400 text-sm"><Version /></span>
               </p>
             </div>
             <div className="text-sm text-gray-400">
-              Sistema de monitoreo de sensores de energia y combustible
+              Sistema de monitoreo de sensores de energia
             </div>
           </div>
         </div>

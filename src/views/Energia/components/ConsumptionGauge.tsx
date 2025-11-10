@@ -1,5 +1,6 @@
 // Componente Gauge
-export function ConsumptionGauge({ value, max = 100, label, size = "medium", color = "green" }) {
+import { ConsumptionGaugeProps } from "../types";
+export function ConsumptionGauge({ value, max = 100, label, size = "medium", color = "green" }: ConsumptionGaugeProps) {
   const percentage = (value / max) * 100;
   
   const sizeConfig = {

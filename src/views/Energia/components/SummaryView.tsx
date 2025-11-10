@@ -14,7 +14,6 @@ interface SummaryViewProps {
 
 export function SummaryView({
     device,
-    index,
     onViewDetails,
     currentTimeRange
 }: SummaryViewProps) {
@@ -22,8 +21,6 @@ export function SummaryView({
     // Estado para los Tabs del segundo gráfico
     const [activeTab, setActiveTab] = useState('current_a'); // Tab inicial
 
-    const colors = ['blue', 'green', 'purple', 'yellow', 'red'];
-    const currentColor = colors[index % colors.length];
 
     const lastDataTime = new Date(device.time);
     const now = new Date();
