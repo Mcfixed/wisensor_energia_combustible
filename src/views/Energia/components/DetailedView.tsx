@@ -1,30 +1,42 @@
 // components/DetailedView.tsx
-import { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, TrendingUp, Zap, FileText, 
-  DollarSign, AlertTriangle, Check, Loader2 
+import { useState, useEffect, useRef } from 'react';
+import {
+  ArrowLeft, TrendingUp, Zap, FileText,
+  DollarSign, AlertTriangle, Check, Loader2, Download
 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { DeviceSummary } from '../types';
 import { useEnergyDetails } from '../hooks/useEnergyDetails';
 import { Card } from './Card';
-import { updateKwhPriceByDevice } from '../services/energiaService'; // Asegúrate de importar esto
+import { updateKwhPriceByDevice } from '../services/energiaService';
+// Importar jsPDF
+import jsPDF from 'jspdf';
+// Importar tipos de Chart.js (¡Importante para los refs!)
+import { Chart as ChartJS } from 'chart.js';
 
 interface DetailedViewProps {
-  device: DeviceSummary; 
+  device: DeviceSummary;
   onBack: () => void;
 }
 
 export function DetailedView({ device, onBack }: DetailedViewProps) {
-  
+
   const { data, loading, error } = useEnergyDetails(device.deviceInfo.devEui);
-  
+
   // Estado para el precio editable
   const [editablePrice, setEditablePrice] = useState<number | null>(null);
   // Estado para el botón de guardar
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // --- NUEVO: Refs para los gráficos ---
+  // Estos refs nos darán acceso a la instancia de Chart.js para convertirlos a imagen
+  const dailyChartRef = useRef<ChartJS<'bar'>>(null);
+  const monthlyChartRef = useRef<ChartJS<'bar'>>(null);
+  // Estado de carga para el PDF
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
 
   // Cuando 'data' (de la API) cargue, seteamos el estado 'editablePrice'
   useEffect(() => {
@@ -70,14 +82,14 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
       }
     }
   };
-  
+
   const monthlyChartOptions = {
     ...dailyChartOptions,
     scales: {
       ...dailyChartOptions.scales,
       x: {
-         ...dailyChartOptions.scales.x,
-         ticks: { ...dailyChartOptions.scales.x.ticks, maxRotation: 0, minRotation: 0 }
+        ...dailyChartOptions.scales.x,
+        ticks: { ...dailyChartOptions.scales.x.ticks, maxRotation: 0, minRotation: 0 }
       }
     }
   };
@@ -108,26 +120,191 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
   // --- Función para Guardar Precio ---
   const handleSavePrice = async () => {
     if (editablePrice === null || editablePrice === data?.price_kwh) return;
-    
+
     setIsSaving(true);
     setSaveSuccess(false);
     try {
       // Llamamos a la API para guardar
       const response = await updateKwhPriceByDevice(device.deviceInfo.devEui, editablePrice);
-      
+
       // Seteamos el precio con el valor confirmado por la API
       setEditablePrice(response.new_price);
-      
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
       console.error("Error al guardar el precio:", err);
       // Opcional: revertir el precio al original si falla
-      if (data) setEditablePrice(data.price_kwh); 
+      if (data) setEditablePrice(data.price_kwh);
     } finally {
       setIsSaving(false);
     }
   };
+
+  // --- NUEVA FUNCIÓN: Generar y Descargar PDF ---
+  const handleDownloadPDF = async () => {
+    // Validar que tenemos todos los datos necesarios
+    if (!data || !editablePrice || !dailyChartRef.current || !monthlyChartRef.current) {
+      alert("No se pueden generar el PDF. Faltan datos o los gráficos no han cargado.");
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4'); // A4 (210x297mm), portrait
+      const pageHeight = 297;
+      const pageWidth = 210;
+      const margin = 15;
+      const contentWidth = pageWidth - (margin * 2);
+      let yPos = margin; // Posición Y actual
+
+      // --- Título y Datos del Dispositivo ---
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text('Recibo de Consumo Eléctrico', margin, yPos);
+      yPos += 10;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(12);
+      pdf.text(`Dispositivo: ${device.deviceInfo.deviceName}`, margin, yPos);
+      yPos += 6;
+      pdf.text(`Ubicación: ${device.deviceInfo.location}`, margin, yPos);
+      yPos += 6;
+      pdf.text(`EUI: ${device.deviceInfo.devEui}`, margin, yPos);
+      yPos += 10; // Espacio
+
+      // --- Resumen de Costos (La "Boleta") ---
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text('Resumen de Costos (Últimos 30 días)', margin, yPos);
+      yPos += 7;
+
+      // Línea divisoria
+      pdf.setDrawColor(200); // Color gris claro
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 7;
+
+      // Cálculos
+      const priceToCalculate = editablePrice;
+      const totalCost = data.totalConsumptionLast30Days * priceToCalculate;
+      const avgDailyCost = data.avgDailyConsumption * priceToCalculate;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.text(`Precio por kWh (Configurado):`, margin, yPos);
+      pdf.text(`$ ${priceToCalculate.toLocaleString('es-CL')}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 7;
+
+      pdf.text(`Consumo Total (30 días):`, margin, yPos);
+      pdf.text(`${data.totalConsumptionLast30Days.toFixed(2)} kWh`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 7;
+
+      pdf.text(`Consumo Promedio Diario:`, margin, yPos);
+      pdf.text(`${data.avgDailyConsumption.toFixed(2)} kWh/día`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 7;
+
+      pdf.text(`Costo Promedio Diario (Estimado):`, margin, yPos);
+      pdf.text(`$ ${avgDailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 10; // Espacio antes del total
+
+      // Total
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text(`Total Estimado (30 días):`, margin, yPos);
+      pdf.text(`$ ${totalCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 15; // Espacio
+
+      // --- Detalle de Consumo Diario (Tabla) ---
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text('Detalle de Consumo Diario (Últimos 30 días)', margin, yPos);
+      yPos += 7;
+
+      // Encabezados de la tabla
+      pdf.setFontSize(10);
+      pdf.text('Fecha', margin, yPos);
+      pdf.text('Consumo (kWh)', margin + 70, yPos, { align: 'right' });
+      pdf.text('Costo Estimado', margin + 110, yPos, { align: 'right' });
+      yPos += 5;
+      pdf.line(margin, yPos, pageWidth - margin, yPos); // Línea
+      yPos += 5;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+
+      for (const day of data.dailyConsumption) {
+        // Control de salto de página
+        if (yPos > pageHeight - margin) {
+          pdf.addPage();
+          yPos = margin;
+          // Repetir encabezados en nueva página
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(10);
+          pdf.text('Fecha', margin, yPos);
+          pdf.text('Consumo (kWh)', margin + 70, yPos, { align: 'right' });
+          pdf.text('Costo Estimado', margin + 110, yPos, { align: 'right' });
+          yPos += 5;
+          pdf.line(margin, yPos, pageWidth - margin, yPos); // Línea
+          yPos += 5;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+        }
+
+        const dailyCost = (day.consumption * priceToCalculate);
+        pdf.text(day.date, margin, yPos);
+        pdf.text(day.consumption.toFixed(2), margin + 70, yPos, { align: 'right' });
+        pdf.text(`$ ${dailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, margin + 110, yPos, { align: 'right' });
+        yPos += 6;
+      }
+      yPos += 10; // Espacio
+
+      // --- Gráficos (Como imágenes) ---
+      // Asegurarse de que no se superpongan con el texto
+      if (yPos > pageHeight - 120) { // Si queda poco espacio
+          pdf.addPage();
+          yPos = margin;
+      }
+
+      // Obtener imágenes de los canvas
+      // Usamos .toBase64Image() que provee Chart.js
+      const dailyChartImg = dailyChartRef.current.toBase64Image();
+      const monthlyChartImg = monthlyChartRef.current.toBase64Image();
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text('Gráficos de Consumo', margin, yPos);
+      yPos += 7;
+
+      pdf.setFontSize(12);
+      pdf.text('Consumo Mensual', margin, yPos);
+      yPos += 5;
+      // Ancho: 180mm, Alto: 90mm (proporción 2:1)
+      pdf.addImage(monthlyChartImg, 'PNG', margin, yPos, contentWidth, contentWidth / 2);
+      yPos += (contentWidth / 2) + 10; // Alto de la imagen + espacio
+
+      // Control de salto de página para el segundo gráfico
+      if (yPos > pageHeight - 100) {
+        pdf.addPage();
+        yPos = margin;
+      }
+
+      pdf.setFontSize(12);
+      pdf.text('Consumo Diario', margin, yPos);
+      yPos += 5;
+      pdf.addImage(dailyChartImg, 'PNG', margin, yPos, contentWidth, contentWidth / 2);
+
+      // --- Fin y Guardado ---
+      pdf.save(`recibo_${device.deviceInfo.devEui}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    } catch (e) {
+      console.error("Error al generar el PDF:", e);
+      alert("Ocurrió un error al generar el PDF.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+  // --- Fin Nueva Función PDF ---
 
 
   const renderContent = () => {
@@ -141,9 +318,9 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
       // Espera a que tanto 'data' como 'editablePrice' estén listos
       return <div className="flex items-center justify-center h-64 text-gray-400">Cargando datos de precio...</div>;
     }
-    
+
     // Usamos el precio del estado local para los cálculos
-    const priceToCalculate = editablePrice; 
+    const priceToCalculate = editablePrice;
     const totalCost = data.totalConsumptionLast30Days * priceToCalculate;
     const avgDailyCost = data.avgDailyConsumption * priceToCalculate;
 
@@ -158,9 +335,10 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 Consumo Mensual (Últimos 12 meses)
               </h3>
               <div className="flex-1 min-h-0">
-                <Bar 
-                  options={monthlyChartOptions} 
-                  data={monthlyChartData} 
+                <Bar
+                  ref={monthlyChartRef} // <-- AÑADIR REF
+                  options={monthlyChartOptions}
+                  data={monthlyChartData}
                   plugins={[ChartDataLabels]}
                 />
               </div>
@@ -174,20 +352,21 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 Consumo Diario (Últimos 30 días)
               </h3>
               <div className="flex-1 min-h-0">
-                <Bar 
-                  options={dailyChartOptions} 
-                  data={dailyChartData} 
+                <Bar
+                  ref={dailyChartRef} // <-- AÑADIR REF
+                  options={dailyChartOptions}
+                  data={dailyChartData}
                   plugins={[ChartDataLabels]}
                 />
               </div>
             </div>
           </Card>
         </div>
-        
+
         {/* Segunda fila: Análisis de Costos */}
         <Card>
           <div className="p-4">
-            
+
             {/* Título y Disclaimer */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h3 className="text-lg font-semibold text-white">
@@ -200,7 +379,7 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 </p>
               </div>
             </div>
-            
+
             {/* Input para el Precio (Editable) */}
             <div className="mb-4">
               <label htmlFor="priceKwh" className="text-sm text-gray-400 block mb-1">
@@ -217,14 +396,14 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                     className="w-full pl-7 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none transition-colors"
                   />
                 </div>
-                
+
                 {/* Botón de Guardar */}
                 <button
                   onClick={handleSavePrice}
-                  disabled={isSaving || saveSuccess || editablePrice === data.price_kwh}
+                  disabled={isSaving || saveSuccess || (data && editablePrice === data.price_kwh)}
                   className="px-4 py-2 rounded-lg text-white font-medium transition-colors
-                             bg-blue-600 hover:bg-blue-700
-                             disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                                 bg-blue-600 hover:bg-blue-700
+                                 disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSaving ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -241,28 +420,28 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
             <div className="bg-gray-dark p-4 space-y-3">
               <div className="flex justify-between items-center pb-3 border-b border-gray-700">
                 <span className="text-gray-400 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-400"/> Consumo Total
+                  <Zap className="w-4 h-4 text-yellow-400" /> Consumo Total
                 </span>
                 <span className="text-white font-medium">{data.totalConsumptionLast30Days.toFixed(2)} kWh</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-gray-700">
                 <span className="text-gray-400 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-400"/> Consumo Promedio
+                  <TrendingUp className="w-4 h-4 text-green-400" /> Consumo Promedio
                 </span>
                 <span className="text-white font-medium">{data.avgDailyConsumption.toFixed(2)} kWh/día</span>
               </div>
               <div className="flex justify-between items-center pb-3 border-b border-gray-700">
                 <span className="text-gray-400 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-green-400"/> Costo Promedio Diario
+                  <DollarSign className="w-4 h-4 text-green-400" /> Costo Promedio Diario
                 </span>
-                <span className="text-white font-medium">$ {avgDailyCost.toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                <span className="text-white font-medium">$ {avgDailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}</span>
               </div>
               <div className="flex justify-between items-center pt-2">
                 <span className="text-lg font-semibold text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5"/> Total Estimado (30 días)
+                  <FileText className="w-5 h-5" /> Total Estimado (30 días)
                 </span>
                 <span className="text-2xl font-bold text-green-400">
-                  $ {totalCost.toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                  $ {totalCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}
                 </span>
               </div>
             </div>
@@ -275,7 +454,7 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
   // Layout principal (corregido para h-screen)
   return (
     <div className="h-screen flex flex-col bg-gray-dark">
-      
+
       {/* Header fijo */}
       <div className="flex-shrink-0 p-2 pb-1">
         <Card>
@@ -297,6 +476,26 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
                 </p>
               </div>
             </div>
+
+            {/* --- NUEVO BOTÓN DE DESCARGA PDF --- */}
+            <button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF || loading || !data}
+              className="flex items-center gap-2 px-4 py-2 cursor-pointer text-white font-medium transition-colors
+                         bg-green-600 hover:bg-green-700
+                         disabled:bg-gray-500 disabled:opacity-70 disabled:cursor-not-allowed"
+              title="Descargar Recibo en PDF"
+            >
+              {isGeneratingPDF ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
+              <span className="hidden sm:inline">
+                {isGeneratingPDF ? "Generando..." : "Descargar PDF"}
+              </span>
+            </button>
+
           </div>
         </Card>
       </div>

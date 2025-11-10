@@ -3,16 +3,11 @@ import {
   Device, DeviceCreate, DeviceUpdate 
 } from '../types/DeviceTypes';
 
-// Asumimos que la URL base ya incluye /api
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * Función helper para manejar las peticiones fetch.
- */
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const defaultHeaders = {
     'Content-Type': 'application/json',
-    // 'Authorization': `Bearer ${getToken()}` // Añadir auth si es necesario
   };
 
   const config = {
@@ -31,21 +26,13 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json() as Promise<T>;
 }
 
-// --- API de Jerarquía (Empresas y Centros) ---
-// Nota: Estas son de los endpoints que creamos en los pasos anteriores
-
 export const getCompanies = (): Promise<Company[]> => {
-  // Asumimos que este endpoint devuelve Company[]
   return apiFetch<Company[]>('/companies');
 };
 
 export const getCentersByCompany = (companyId: number): Promise<Center[]> => {
-  // Asumimos que este endpoint devuelve Center[]
   return apiFetch<Center[]>(`/companies/${companyId}/centers`);
 };
-
-
-// --- API de Dispositivos (Devices) ---
 
 export const getDevicesByCenter = (centerId: number): Promise<Device[]> => {
   return apiFetch<Device[]>(`/devices/by_center/${centerId}`);
@@ -66,7 +53,7 @@ export const updateDevice = (id: number, data: DeviceUpdate): Promise<Device> =>
 };
 
 export const deleteDevice = (id: number): Promise<Device> => {
-  return apiFetch<Device>(`/api/devices/${id}`, {
+  return apiFetch<Device>(`/devices/${id}`, {
     method: 'DELETE',
   });
 };

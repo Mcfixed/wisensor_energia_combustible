@@ -1,17 +1,11 @@
 import { User, UserCreate, UserUpdate, Company, CompanyAssignment } from '../types/appTypes';
 
-// Obtén la URL base de tus variables de entorno
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * Función helper para manejar las peticiones fetch y parsear el JSON.
- * Maneja errores de red y respuestas HTTP no exitosas.
- */
+
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const defaultHeaders = {
     'Content-Type': 'application/json',
-    // Aquí podrías agregar headers de autenticación, ej:
-    // 'Authorization': `Bearer ${getToken()}`
   };
 
   const config = {
