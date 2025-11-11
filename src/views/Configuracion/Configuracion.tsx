@@ -25,7 +25,7 @@ export const Configuracion = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 p-6">
           {/* Tarjeta Empresas */}
-          
+            {hasRole(1, 'admin') && (
             <Link to="/configuracion/empresas" className="group">
               <div className="h-full border border-gray-700/40 bg-dark-osc p-5 transition-all duration-300 hover:border-red-dark/50 hover:bg-dark-osc/70 hover:shadow-lg">
                 <div className="flex flex-col h-full">
@@ -45,7 +45,7 @@ export const Configuracion = () => {
                 </div>
               </div>
             </Link>
-          
+          )}
 
           {/* Tarjeta Centros */}
           
