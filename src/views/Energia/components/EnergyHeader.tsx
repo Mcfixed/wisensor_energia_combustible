@@ -107,8 +107,8 @@ export function EnergyHeader({
               onClick={onToggleSensitive}
               className="flex items-center gap-1 text-xs text-gray-300 hover:text-white"
             >
-              {showSensitive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showSensitive ? "Ocultar datos" : "Mostrar datos"}
+              {/* {showSensitive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />} */}
+              {/* {showSensitive ? "Ocultar datos" : "Mostrar datos"} */}
             </button>
             <div className="h-4 w-px bg-gray-600"></div>
             <div className="flex items-center gap-1 text-xs text-gray-300">
