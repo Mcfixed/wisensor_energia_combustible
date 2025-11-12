@@ -143,167 +143,298 @@ export function DetailedView({ device, onBack }: DetailedViewProps) {
 
   // --- NUEVA FUNCIÓN: Generar y Descargar PDF ---
   const handleDownloadPDF = async () => {
-    // Validar que tenemos todos los datos necesarios
-    if (!data || !editablePrice || !dailyChartRef.current || !monthlyChartRef.current) {
-      alert("No se pueden generar el PDF. Faltan datos o los gráficos no han cargado.");
-      return;
-    }
+  // Validar que tenemos todos los datos necesarios
+  if (!data || !editablePrice || !dailyChartRef.current || !monthlyChartRef.current) {
+    alert("No se pueden generar el PDF. Faltan datos o los gráficos no han cargado.");
+    return;
+  }
 
-    setIsGeneratingPDF(true);
+  setIsGeneratingPDF(true);
 
+  try {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageHeight = 297;
+    const pageWidth = 210;
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPos = margin;
+
+    // --- Colores ---
+    const primaryColor = [200, 60, 75]; // Rojo para acentos
+    const darkGray = [60, 60, 60]; // Texto principal
+    const mediumGray = [100, 100, 100]; // Texto secundario
+    const lightGray = [240, 240, 240]; // Fondos sutiles
+    const borderColor = [220, 220, 220]; // Bordes grises
+    const lightBg = [250, 245, 245];
+    // --- Encabezado con Logo ---
+    const logoUrl = '/AST-Logo.png';
+    // Logo en esquina superior izquierda
+    // pdf.addImage(logoBase64, 'PNG', margin, yPos, 30, 15);
     try {
-      const pdf = new jsPDF('p', 'mm', 'a4'); // A4 (210x297mm), portrait
-      const pageHeight = 297;
-      const pageWidth = 210;
-      const margin = 15;
-      const contentWidth = pageWidth - (margin * 2);
-      let yPos = margin; // Posición Y actual
+      // jsPDF puede cargar imágenes directamente desde URL
+      pdf.addImage(logoUrl, 'PNG', 15, 5, 30, 15);
+    } catch (logoError) {
+      console.warn('No se pudo cargar el logo:', logoError);
+      // Si falla, simplemente continuamos sin logo
+    }
+    // Título principal centrado
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(22);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('INFORME DE CONSUMO ENERGÉTICO', pageWidth / 2, yPos + 10, { align: 'center' });
+    
+    // Línea decorativa gris
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.setLineWidth(0.5);
+    pdf.line(margin, yPos + 15, pageWidth - margin, yPos + 15);
+    
+    // Fecha del reporte
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+    pdf.text(`Período: Últimos 30 días - Generado: ${new Date().toLocaleDateString('es-CL')}`, pageWidth / 2, yPos + 22, { align: 'center' });
+    
+    yPos += 30;
 
-      // --- Título y Datos del Dispositivo ---
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(18);
-      pdf.text('Recibo de Consumo Eléctrico', margin, yPos);
-      yPos += 10;
+    // --- Información del Dispositivo ---
+    pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    pdf.rect(margin, yPos, contentWidth, 25, 'F');
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.setLineWidth(0.5);
+    pdf.rect(margin, yPos, contentWidth, 25, 'S');
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('DISPOSITIVO DE MONITOREO', margin + 12, yPos + 8);
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+    
+    // Layout en dos columnas
+    pdf.text(`• ${device.deviceInfo.deviceName}`, margin + 12, yPos + 15);
+    pdf.text(`• ${device.deviceInfo.location}`, margin + 12, yPos + 21);
+    pdf.text(`• EUI: ${device.deviceInfo.devEui}`, margin + contentWidth/2 + 12, yPos + 15);
+    
+    yPos += 32;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(12);
-      pdf.text(`Dispositivo: ${device.deviceInfo.deviceName}`, margin, yPos);
-      yPos += 6;
-      pdf.text(`Ubicación: ${device.deviceInfo.location}`, margin, yPos);
-      yPos += 6;
-      pdf.text(`EUI: ${device.deviceInfo.devEui}`, margin, yPos);
-      yPos += 10; // Espacio
+    // --- Resumen de Costos ---
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('RESUMEN FINANCIERO', margin, yPos);
+    yPos += 10;
 
-      // --- Resumen de Costos (La "Boleta") ---
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text('Resumen de Costos (Últimos 30 días)', margin, yPos);
-      yPos += 7;
+    // Cálculos
+    const priceToCalculate = editablePrice;
+    const totalCost = data.totalConsumptionLast30Days * priceToCalculate;
+    const avgDailyCost = data.avgDailyConsumption * priceToCalculate;
 
-      // Línea divisoria
-      pdf.setDrawColor(200); // Color gris claro
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 7;
+    // Cuadro de resumen principal
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.setLineWidth(0.5);
+    pdf.rect(margin, yPos, contentWidth, 45, 'FD');
+    
+    const cardPadding = 10;
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+    
+    pdf.text('PRECIO kWh', margin + cardPadding, yPos + 8);
+    pdf.text('CONSUMO TOTAL', margin + cardPadding, yPos + 20);
+    pdf.text('PROMEDIO DIARIO', margin + cardPadding, yPos + 32);
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(11);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    
+    pdf.text(`$ ${priceToCalculate.toLocaleString('es-CL')}`, pageWidth - margin - cardPadding, yPos + 8, { align: 'right' });
+    pdf.text(`${data.totalConsumptionLast30Days.toFixed(2)} kWh`, pageWidth - margin - cardPadding, yPos + 20, { align: 'right' });
+    pdf.text(`${data.avgDailyConsumption.toFixed(2)} kWh/día`, pageWidth - margin - cardPadding, yPos + 32, { align: 'right' });
 
-      // Cálculos
-      const priceToCalculate = editablePrice;
-      const totalCost = data.totalConsumptionLast30Days * priceToCalculate;
-      const avgDailyCost = data.avgDailyConsumption * priceToCalculate;
+    // Total destacado
+    yPos += 50;
+    pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    pdf.rect(margin, yPos, contentWidth, 20, 'F');
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.rect(margin, yPos, contentWidth, 20, 'S');
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('INVERSIÓN TOTAL ESTIMADA (30 DÍAS)', margin + cardPadding, yPos + 8);
+    pdf.text(`$ ${totalCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, pageWidth - margin - cardPadding, yPos + 8, { align: 'right' });
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+    pdf.text('Costo estimado basado en consumo medido', margin + cardPadding, yPos + 15);
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-      pdf.text(`Precio por kWh (Configurado):`, margin, yPos);
-      pdf.text(`$ ${priceToCalculate.toLocaleString('es-CL')}`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 7;
+    yPos += 30;
 
-      pdf.text(`Consumo Total (30 días):`, margin, yPos);
-      pdf.text(`${data.totalConsumptionLast30Days.toFixed(2)} kWh`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 7;
+    // --- Detalle de Consumo Diario ---
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('DETALLE DIARIO DE CONSUMO', margin, yPos);
+    yPos += 8;
 
-      pdf.text(`Consumo Promedio Diario:`, margin, yPos);
-      pdf.text(`${data.avgDailyConsumption.toFixed(2)} kWh/día`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 7;
+    // Encabezados de tabla
+    pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+    pdf.rect(margin, yPos, contentWidth, 10, 'F');
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.rect(margin, yPos, contentWidth, 10, 'S');
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('FECHA', margin + 8, yPos + 6);
+    pdf.text('ENERGÍA (kWh)', margin + 80, yPos + 6, { align: 'right' });
+    pdf.text('COSTO ESTIMADO', margin + 120, yPos + 6, { align: 'right' });
+    
+    yPos += 12;
 
-      pdf.text(`Costo Promedio Diario (Estimado):`, margin, yPos);
-      pdf.text(`$ ${avgDailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 10; // Espacio antes del total
-
-      // Total
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text(`Total Estimado (30 días):`, margin, yPos);
-      pdf.text(`$ ${totalCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, pageWidth - margin, yPos, { align: 'right' });
-      yPos += 15; // Espacio
-
-      // --- Detalle de Consumo Diario (Tabla) ---
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text('Detalle de Consumo Diario (Últimos 30 días)', margin, yPos);
-      yPos += 7;
-
-      // Encabezados de la tabla
-      pdf.setFontSize(10);
-      pdf.text('Fecha', margin, yPos);
-      pdf.text('Consumo (kWh)', margin + 70, yPos, { align: 'right' });
-      pdf.text('Costo Estimado', margin + 110, yPos, { align: 'right' });
-      yPos += 5;
-      pdf.line(margin, yPos, pageWidth - margin, yPos); // Línea
-      yPos += 5;
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-
-      for (const day of data.dailyConsumption) {
-        // Control de salto de página
-        if (yPos > pageHeight - margin) {
-          pdf.addPage();
-          yPos = margin;
-          // Repetir encabezados en nueva página
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(10);
-          pdf.text('Fecha', margin, yPos);
-          pdf.text('Consumo (kWh)', margin + 70, yPos, { align: 'right' });
-          pdf.text('Costo Estimado', margin + 110, yPos, { align: 'right' });
-          yPos += 5;
-          pdf.line(margin, yPos, pageWidth - margin, yPos); // Línea
-          yPos += 5;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(9);
-        }
-
-        const dailyCost = (day.consumption * priceToCalculate);
-        pdf.text(day.date, margin, yPos);
-        pdf.text(day.consumption.toFixed(2), margin + 70, yPos, { align: 'right' });
-        pdf.text(`$ ${dailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, margin + 110, yPos, { align: 'right' });
-        yPos += 6;
-      }
-      yPos += 10; // Espacio
-
-      // --- Gráficos (Como imágenes) ---
-      // Asegurarse de que no se superpongan con el texto
-      if (yPos > pageHeight - 120) { // Si queda poco espacio
-          pdf.addPage();
-          yPos = margin;
-      }
-
-      // Obtener imágenes de los canvas
-      // Usamos .toBase64Image() que provee Chart.js
-      const dailyChartImg = dailyChartRef.current.toBase64Image();
-      const monthlyChartImg = monthlyChartRef.current.toBase64Image();
-
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(14);
-      pdf.text('Gráficos de Consumo', margin, yPos);
-      yPos += 7;
-
-      pdf.setFontSize(12);
-      pdf.text('Consumo Mensual', margin, yPos);
-      yPos += 5;
-      // Ancho: 180mm, Alto: 90mm (proporción 2:1)
-      pdf.addImage(monthlyChartImg, 'PNG', margin, yPos, contentWidth, contentWidth / 2);
-      yPos += (contentWidth / 2) + 10; // Alto de la imagen + espacio
-
-      // Control de salto de página para el segundo gráfico
-      if (yPos > pageHeight - 100) {
+    // Filas de la tabla
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    
+    data.dailyConsumption.forEach((day, index) => {
+      // Control de salto de página
+      if (yPos > pageHeight - margin - 15) {
         pdf.addPage();
         yPos = margin;
+        // Repetir encabezados
+        pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+        pdf.rect(margin, yPos, contentWidth, 10, 'F');
+        pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+        pdf.rect(margin, yPos, contentWidth, 10, 'S');
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9);
+        pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+        pdf.text('FECHA', margin + 8, yPos + 6);
+        pdf.text('ENERGÍA (kWh)', margin + 80, yPos + 6, { align: 'right' });
+        pdf.text('COSTO ESTIMADO', margin + 120, yPos + 6, { align: 'right' });
+        yPos += 12;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
       }
 
-      pdf.setFontSize(12);
-      pdf.text('Consumo Diario', margin, yPos);
-      yPos += 5;
-      pdf.addImage(dailyChartImg, 'PNG', margin, yPos, contentWidth, contentWidth / 2);
+      // Filas alternadas con fondo sutil
+      if (index % 2 === 0) {
+        pdf.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+        pdf.rect(margin, yPos - 3, contentWidth, 6, 'F');
+      }
 
-      // --- Fin y Guardado ---
-      pdf.save(`recibo_${device.deviceInfo.devEui}_${new Date().toISOString().split('T')[0]}.pdf`);
+      const dailyCost = (day.consumption * priceToCalculate);
+      pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+      pdf.text(day.date, margin + 8, yPos + 2);
+      
+      pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+      pdf.text(day.consumption.toFixed(2), margin + 80, yPos + 2, { align: 'right' });
+      
+      pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+      pdf.text(`$ ${dailyCost.toLocaleString('es-CL', { maximumFractionDigits: 0 })}`, margin + 120, yPos + 2, { align: 'right' });
+      
+      yPos += 6;
+    });
+    
+    yPos += 15;
 
-    } catch (e) {
-      console.error("Error al generar el PDF:", e);
-      alert("Ocurrió un error al generar el PDF.");
-    } finally {
-      setIsGeneratingPDF(false);
+    // --- Análisis Gráfico ---
+    if (yPos > pageHeight - 130) {
+      pdf.addPage();
+      yPos = margin;
     }
-  };
+
+    const dailyChartImg = dailyChartRef.current.toBase64Image();
+    const monthlyChartImg = monthlyChartRef.current.toBase64Image();
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('ANÁLISIS VISUAL', margin, yPos);
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+    pdf.text('Tendencias y patrones de consumo energético', margin, yPos + 5);
+    
+    yPos += 12;
+
+    // Gráfico mensual
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.rect(margin, yPos, contentWidth, contentWidth / 2 + 15, 'FD');
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('EVOLUCIÓN MENSUAL', margin + 15, yPos + 10);
+    
+    pdf.addImage(monthlyChartImg, 'PNG', margin + 5, yPos + 15, contentWidth - 10, (contentWidth - 10) / 2);
+    yPos += (contentWidth / 2) + 25;
+
+    // Gráfico diario
+    if (yPos > pageHeight - 100) {
+      pdf.addPage();
+      yPos = margin;
+    }
+
+    pdf.setFillColor(255, 255, 255);
+    pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+    pdf.rect(margin, yPos, contentWidth, contentWidth / 2 + 15, 'FD');
+    
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
+    pdf.text('DETALLE DIARIO', margin + 15, yPos + 10);
+    
+    pdf.addImage(dailyChartImg, 'PNG', margin + 5, yPos + 15, contentWidth - 10, (contentWidth - 10) / 2);
+
+    // --- Pie de página con rojos ---
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      
+      // Fondo sutil para el pie (gris claro)
+      pdf.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+      pdf.rect(0, pageHeight - 20, pageWidth, 20, 'F');
+      
+      // Línea superior del pie (roja)
+      pdf.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+      
+      // Texto del pie
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8);
+      pdf.setTextColor(mediumGray[0], mediumGray[1], mediumGray[2]);
+      
+      const footerText = `Sistema de Monitoreo de Energía AST - Documento técnico de carácter referencial - Página ${i} de ${totalPages}`;
+      const dateText = `Generado el ${new Date().toLocaleDateString('es-CL', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}`;
+      
+      pdf.text(footerText, pageWidth / 2, pageHeight - 14, { align: 'center' });
+      pdf.text(dateText, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    }
+
+    // --- Guardar PDF ---
+    pdf.save(`analisis_energetico_${device.deviceInfo.deviceName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+  } catch (e) {
+    console.error("Error al generar el PDF:", e);
+    alert("Ocurrió un error al generar el PDF.");
+  } finally {
+    setIsGeneratingPDF(false);
+  }
+};
   // --- Fin Nueva Función PDF ---
 
 

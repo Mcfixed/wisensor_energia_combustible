@@ -96,6 +96,7 @@ export interface DeviceSummary {
   };
   dailyConsumption: number;
   alerts: DeviceAlert[];
+  final_energy_counter: number;
 }
 
 export interface DailyConsumptionPoint {

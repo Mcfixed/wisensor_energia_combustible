@@ -38,7 +38,6 @@ export function ConsumptionGauge({ value, max = 100, label, size = "medium", col
         </div>
       </div>
       <div className={`text-white mt-1 ${config.label}`}>{label}</div>
-      <div className="text-xs text-gray-500">{percentage.toFixed(0)}%</div>
     </div>
   );
 }

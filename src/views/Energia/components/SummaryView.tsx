@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import { Card } from "./Card";
 import { ConsumptionGauge } from "./ConsumptionGauge";
-import { DeviceSummary } from "../types"; // Asegúrate que 'types.ts' refleje el schema de backend
+import { DeviceSummary } from "../types"; 
+
+import { LayoutGrid, LayoutList } from 'lucide-react';
+
 
 interface SummaryViewProps {
     device: DeviceSummary;
@@ -20,6 +23,9 @@ export function SummaryView({
 
     // Estado para los Tabs del segundo gráfico
     const [activeTab, setActiveTab] = useState('current_a'); // Tab inicial
+
+    // Estado para el modo de visualización de gráficos
+    const [viewMode, setViewMode] = useState<'tabs' | 'all'>('tabs');
 
 
     const lastDataTime = new Date(device.time);
@@ -95,6 +101,24 @@ export function SummaryView({
             }
         }
     };
+    
+    // --- Opciones para los mini-gráficos (oculta la leyenda) ---
+    const miniChartOptions = {
+        ...baseChartOptions,
+        plugins: {
+            ...baseChartOptions.plugins,
+            legend: {
+                display: false // Ocultamos la leyenda para ahorrar espacio
+            }
+        },
+        scales: {
+             ...baseChartOptions.scales,
+             x: {
+                 ...baseChartOptions.scales.x,
+                 ticks: { ...baseChartOptions.scales.x.ticks, maxTicksLimit: 5 } // Menos ticks
+             }
+        }
+    };
 
 
     // --- Definición de TODAS las variables (debe coincidir con ALL_HISTORICAL_FIELDS) ---
@@ -130,6 +154,20 @@ export function SummaryView({
 
     // Define el tipo 'VariableId'
     type VariableId = typeof availableVariables[number]['id'];
+
+    // --- Definición de las variables que van en los tabs ---
+    const tabbedChartVariables = [
+        { id: 'current_a', title: 'Corriente(A)' },
+        { id: 'power_a', title: 'Pot. Activa(A)' },
+        { id: 'powerFactor_a', title: 'F.Potencia(A)' },
+        { id: 'thd_i_a', title: 'THD-I(A)' },
+        { id: 'thd_u_a', title: 'THD-U(A)' },
+        { id: 'reactivePower_a', title: 'Pot.Reactiva(A)' },
+        { id: 'apparentPower_a', title: 'Pot.Aparente(A)' },
+        { id: 'apparentEnergy_a', title: 'Ener.Aparente(A)' },
+        { id: 'reactiveEnergy_a', title: 'Ener.Reactiva(A)' },
+        { id: 'frequency', title: 'Frec.' },
+    ];
 
     // Función para construir los datasets del gráfico
     const getHistoricalChartData = (variableIds: VariableId[]) => {
@@ -180,8 +218,8 @@ export function SummaryView({
                     <div className="flex items-center justify-between h-full">
                         <div className="flex items-center gap-3">
                             <div className={`flex-shrink-0 w-8 h-8 rounded-full ${isActive
-                                    ? 'bg-green-500 animate-pulse'
-                                    : 'bg-gray-600'
+                                ? 'bg-green-500 animate-pulse'
+                                : 'bg-gray-600'
                                 }`}>
                             </div>
                             <h3 className="text-sm font-semibold text-white">{device.deviceInfo.deviceName}</h3>
@@ -193,22 +231,25 @@ export function SummaryView({
                         </div>
                         <button
                             onClick={onViewDetails}
-                            className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                            className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors cursor-pointer"
                         >
-                            Ver Detalles
+                            Detalles de Facturación
                         </button>
                     </div>
                 </div>
             </Card>
 
             {/* Gauges */}
-            <Card className="h-32">
-                <div className="p-2 h-full">
+            <Card className="h-32 relative">
+    <p className="absolute top-1 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-400 bg-gray-800 px-2 py-1 rounded z-10">
+        {currentTimeRange}
+    </p>
+    <div className="p-2 h-full pt-4">
                     <div className="flex justify-between items-center h-full">
                         <ConsumptionGauge
                             value={device.object.agg_activeEnergy / 1000} // Convertido a kWh
                             max={100} // Asumo que el max es en kWh
-                            label="Total Diario (kWh)"
+                            label="Total"
                             size="medium"
                             color="yellow"
                         />
@@ -238,28 +279,57 @@ export function SummaryView({
             </Card>
 
             {/* Métricas Rápidas */}
-            <Card className="h-20">
-                <div className="p-2 h-full">
-                    <div className="grid grid-cols-4 gap-1 h-full text-xs">
-                        <div className="bg-gray-700 rounded p-1 flex flex-col items-center justify-center">
-                            <div className="text-gray-400">Último Voltaje Total</div>
-                            <div className="text-white font-medium">{device.object.agg_voltage.toFixed(1)}V</div>
-                        </div>
-                        <div className="bg-gray-700 rounded p-1 flex flex-col items-center justify-center">
-                            <div className="text-gray-400">Última Corriente</div>
-                            <div className="text-white font-medium">{device.object.agg_current.toFixed(1)}A</div>
-                        </div>
-                        <div className="bg-gray-700 rounded p-1 flex flex-col items-center justify-center">
-                            <div className="text-gray-400">Última Frec.</div>
-                            <div className="text-white font-medium">{device.object.agg_frequency}Hz</div>
-                        </div>
-                        <div className="bg-gray-700 rounded p-1 flex flex-col items-center justify-center">
-                            <div className="text-gray-400">Última F. P.</div>
-                            <div className="text-white font-medium">{(device.object.agg_powerFactor * 100).toFixed(1)}%</div>
-                        </div>
-                    </div>
-                </div>
-            </Card>
+            <Card className="h-14 bg-dark-osc border border-gray-600/50">
+  <div className="p-2 h-full">
+    <div className="flex items-center space-x-3 h-full">
+      <div className="flex items-center space-x-2">
+      <div className="relative">
+        {isActive && (
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-ping absolute"></div>
+        )}
+        <div className={`w-2 h-2 rounded-full relative ${
+          isActive ? 'bg-green-500' : 'bg-gray-400'
+        }`}></div>
+      </div>
+      <span className={`font-medium text-sm ${
+        isActive ? 'text-green-400' : 'text-gray-400'
+      }`}>
+        {isActive ? 'Live' : 'Offline'}
+      </span>
+    </div>
+      
+      <div className="h-6 w-px bg-gray-600"></div>
+      
+      <div className="grid grid-cols-6 gap-2 flex-1">
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">V</span>
+          <span className="text-white font-bold text-sm">{device.object.phaseA_voltage.toFixed(1)}</span>
+        </div>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">A</span>
+          <span className="text-white font-bold text-sm">{device.object.phaseA_current.toFixed(1)}</span>
+        </div>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">W</span>
+          <span className="text-white font-bold text-sm">{device.object.agg_activePower?.toFixed(0)}</span>
+        </div>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">Hz</span>
+          <span className="text-white font-bold text-sm">{device.object.agg_frequency}</span>
+        </div>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">FP</span>
+          <span className="text-white font-bold text-sm">{(device.object.agg_powerFactor * 100).toFixed(1)}%</span>
+        </div>
+        
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-gray-400 text-xs">Wh</span>
+          <span className="text-white font-bold text-sm">{device.object.agg_activeEnergy?.toFixed(1)}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</Card>
 
             {/* --- Gráfico 1 (Voltaje, Potencia, Consumo) --- */}
             <Card className="h-60">
@@ -277,69 +347,88 @@ export function SummaryView({
             </Card>
 
             {/* --- Gráfico 2 (Métricas Adicionales con Tabs) --- */}
-            <Card className="h-72"> {/* Aumenté un poco la altura para acomodar las filas */}
+            <Card className="h-80"> {/* Altura aumentada para el botón de toggle */}
                 <div className="p-2 h-full flex flex-col">
-                    {/* Contenedor de Tabs en múltiples filas */}
-                    <div className="flex flex-wrap gap-1 border-b border-gray-700 mb-2 pb-1">
-                        <TabButton
-                            title="Corriente(A)"
-                            isActive={activeTab === 'current_a'}
-                            onClick={() => setActiveTab('current_a')}
-                        />
-                        <TabButton
-                            title="Pot. Activa(A)"
-                            isActive={activeTab === 'power_a'}
-                            onClick={() => setActiveTab('power_a')}
-                        />
-                        <TabButton
-                            title="F.Potencia(A)"
-                            isActive={activeTab === 'powerFactor_a'}
-                            onClick={() => setActiveTab('powerFactor_a')}
-                        />
-                        <TabButton
-                            title="THD-I(A)"
-                            isActive={activeTab === 'thd_i_a'}
-                            onClick={() => setActiveTab('thd_i_a')}
-                        />
-                        <TabButton
-                            title="THD-U(A)"
-                            isActive={activeTab === 'thd_u_a'}
-                            onClick={() => setActiveTab('thd_u_a')}
-                        />
-                        <TabButton
-                            title="Pot.Reactiva(A)"
-                            isActive={activeTab === 'reactivePower_a'}
-                            onClick={() => setActiveTab('reactivePower_a')}
-                        />
-                        <TabButton
-                            title="Pot.Aparente(A)"
-                            isActive={activeTab === 'apparentPower_a'}
-                            onClick={() => setActiveTab('apparentPower_a')}
-                        />
-                        <TabButton
-                            title="Ener.Aparente(A)"
-                            isActive={activeTab === 'apparentEnergy_a'}
-                            onClick={() => setActiveTab('apparentEnergy_a')}
-                        />
-                        <TabButton
-                            title="Ener.Reactiva(A)"
-                            isActive={activeTab === 'reactiveEnergy_a'}
-                            onClick={() => setActiveTab('reactiveEnergy_a')}
-                        />
-                        <TabButton
-                            title="Frec."
-                            isActive={activeTab === 'frequency'}
-                            onClick={() => setActiveTab('frequency')}
-                        />
+
+                    {/* --- MODIFICADO: Header con Título y Botón de Toggle (usando Lucide) --- */}
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-700">
+                        <h4 className="text-xs font-medium text-white">Métricas Adicionales</h4>
+                        <button
+                            onClick={() => setViewMode(viewMode === 'tabs' ? 'all' : 'tabs')}
+                            className="flex items-center gap-1.5 text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                            title={viewMode === 'tabs' ? 'Ver todos los gráficos' : 'Ver por pestañas'}
+                        >
+                            {viewMode === 'tabs' ? (
+                                <>
+                                    <LayoutList className="w-4 h-4" strokeWidth={2} />
+                                    Ver Todos
+                                </>
+                            ) : (
+                                <>
+                                    <LayoutGrid className="w-4 h-4" strokeWidth={2} />
+                                    Ver Tabs
+                                </>
+                            )}
+                        </button>
                     </div>
 
-                    {/* Gráfico que cambia según el Tab */}
-                    <div className="flex-1 min-h-0">
-                        <Line
-                            data={getHistoricalChartData([activeTab as VariableId])}
-                            options={baseChartOptions}
-                        />
-                    </div>
+
+                    {/* --- Renderizado Condicional del Contenido --- */}
+                    {viewMode === 'tabs' ? (
+                        <>
+                            {/* === MODO TABS === */}
+                            {/* Contenedor de Tabs en múltiples filas */}
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {tabbedChartVariables.map(tab => (
+                                    <TabButton
+                                        key={tab.id}
+                                        title={tab.title}
+                                        isActive={activeTab === tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Gráfico que cambia según el Tab */}
+                            <div className="flex-1 min-h-0">
+                                <Line
+                                    data={getHistoricalChartData([activeTab as VariableId])}
+                                    options={baseChartOptions}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* === MODO TODOS (Grilla con Scroll) === */}
+                            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    
+                                    {tabbedChartVariables.map(tab => {
+                                        // Buscamos la configuración de la variable para obtener el 'label'
+                                        const variableConfig = availableVariables.find(v => v.id === tab.id);
+                                        
+                                        return (
+                                            <div 
+                                                key={tab.id} 
+                                                className="h-48 flex flex-col bg-dark-osc p-2 rounded-md"
+                                            >
+                                                <h5 className="text-xs text-white text-center font-medium mb-1">
+                                                    {variableConfig?.label || tab.title}
+                                                </h5>
+                                                <div className="flex-1 min-h-0">
+                                                    <Line
+                                                        data={getHistoricalChartData([tab.id as VariableId])}
+                                                        options={miniChartOptions} // <-- Usamos las opciones de mini-gráfico
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </Card>
         </div>
@@ -359,10 +448,10 @@ function TabButton({ title, isActive, onClick }: TabButtonProps) {
             onClick={onClick}
             className={`px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap
         ${isActive
-                    ? 'border-b-2 border-blue-500 text-white'
-                    : 'text-gray-400 hover:text-gray-200 border-b-2 border-transparent'
+                    ? 'border-b-2 border-blue-500 text-white bg-blue-500/40'
+                    : 'text-gray-400 hover:text-gray-200 border-b-2 border-transparent cursor-pointer'
                 }
-      `}
+        `}
         >
             {title}
         </button>
